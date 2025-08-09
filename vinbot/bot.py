@@ -77,16 +77,34 @@ async def handle_vin_decode(update: Update, context: ContextTypes.DEFAULT_TYPE, 
     try:
         data = await client.decode_vin(vin)
     except CarsXEError as e:
-        logger.exception("CarsXE error")
-        await update.message.reply_text(f"Error decoding VIN: {e}")
+        logger.error(f"CarsXE error for VIN {vin}: {e}")
+        await update.message.reply_text(f"❌ Error decoding VIN: {e}")
+        return
+    except Exception as e:
+        logger.exception(f"Unexpected error decoding VIN {vin}")
+        await update.message.reply_text(f"❌ Unexpected error: {str(e)}")
         return
 
-    summary = format_vehicle_summary(data)
-    # Include raw JSON behind a collapsible code fence-like hint
-    pretty_json = json.dumps(data, indent=2)[:3500]  # Telegram message limit safety
-    reply = f"{summary}\n\nDetails:\n<pre>{escape_html(pretty_json)}</pre>"
-
-    await update.message.reply_text(reply, parse_mode=ParseMode.HTML, disable_web_page_preview=True)
+    try:
+        summary = format_vehicle_summary(data)
+        # For now, just send the summary without the JSON details to avoid formatting issues
+        await update.message.reply_text(f"✅ {summary}")
+        
+        # Log success for debugging
+        logger.info(f"Successfully sent VIN decode for {vin}")
+    except Exception as e:
+        logger.exception(f"Error formatting/sending response for VIN {vin}")
+        # Try to send at least basic info
+        try:
+            basic_info = f"✅ VIN decoded successfully\n"
+            if isinstance(data, dict) and "attributes" in data:
+                attrs = data["attributes"]
+                basic_info += f"Make: {attrs.get('make', 'N/A')}\n"
+                basic_info += f"Model: {attrs.get('model', 'N/A')}\n"
+                basic_info += f"Year: {attrs.get('year', 'N/A')}"
+            await update.message.reply_text(basic_info)
+        except:
+            await update.message.reply_text("✅ VIN decoded but had trouble formatting the response.")
 
 
 def escape_html(text: str) -> str:
