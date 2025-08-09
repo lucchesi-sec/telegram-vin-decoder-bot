@@ -1,0 +1,302 @@
+{
+  "success": true,
+  "input": {
+    "key": "g0y3q1f2k_jf9eeo4jt_jf6pic8jp",
+    "vin": "WDD2J6BB2KA047394"
+  },
+  "attributes": {
+    "year": "2019",
+    "make": "Mercedes-Benz",
+    "model": "CLS-Class",
+    "trim": "AMG CLS53 4MATIC",
+    "style": "COUPE 4-DR",
+    "type": "",
+    "size": "",
+    "category": "",
+    "made_in": "GERMANY",
+    "made_in_city": "",
+    "doors": "",
+    "fuel_type": "",
+    "fuel_capacity": "21.10 gallon",
+    "city_mileage": "21 miles/gallon",
+    "highway_mileage": "27 miles/gallon",
+    "engine": "3.0L L6 DOHC 24V",
+    "engine_size": "",
+    "engine_cylinders": "",
+    "transmission": "9-Speed Automatic",
+    "transmission_short": "9A",
+    "transmission_type": "",
+    "transmission_speeds": "",
+    "drivetrain": "AWD",
+    "anti_brake_system": "4-Wheel ABS",
+    "steering_type": "R&P",
+    "curb_weight": "",
+    "gross_vehicle_weight_rating": "",
+    "overall_height": "56.00 in.",
+    "overall_length": "199.10 in.",
+    "overall_width": "74.40 in.",
+    "wheelbase_length": "115.70 in.",
+    "standard_seating": "5",
+    "invoice_price": "$74,307 USD",
+    "delivery_charges": "$995 USD",
+    "manufacturer_suggested_retail_price": "$79,900 USD",
+    "production_seq_number": "047394",
+    "front_brake_type": "Disc",
+    "rear_brake_type": "Disc",
+    "turning_diameter": "41.00 in.",
+    "front_suspension": "Ind",
+    "rear_suspension": "Ind",
+    "front_spring_type": "Coil",
+    "rear_spring_type": "Coil",
+    "tires": "275/35R19",
+    "front_headroom": "36.90 in.",
+    "rear_headroom": "35.90 in.",
+    "front_legroom": "41.90 in.",
+    "rear_legroom": "35.00 in.",
+    "front_shoulder_room": "57.80 in.",
+    "rear_shoulder_room": "56.50 in.",
+    "front_hip_room": "",
+    "rear_hip_room": "",
+    "interior_trim": [
+      "Bengal Red/Black Nappa, premium leather",
+      "Black MB-Tex/DINAMICA w/Red Stitching, leatherette/suede",
+      "Black Nappa w/Grey Stitching, premium leather",
+      "Black Nappa w/Red Stitching, premium leather",
+      "Macchiato Beige/Magma Grey Nappa, premium leather",
+      "Magma Grey/Espresso Brown Nappa, premium leather",
+      "designo Black/Titanium Grey Pearl Nappa, premium leather",
+      "designo Macchiato Beige/Titian Red Nappa, premium leather"
+    ],
+    "exterior_color": [
+      "Black",
+      "Dakota Brown Metallic",
+      "Iridium Silver Metallic",
+      "Lunar Blue Metallic",
+      "Obsidian Black Metallic",
+      "Polar White",
+      "Ruby Black Metallic",
+      "Selenite Grey Metallic",
+      "designo Cardinal Red Metallic",
+      "designo Diamond White Metallic",
+      "designo Selenite Grey Magno"
+    ],
+    "curb_weight_manual": "",
+    "ground_clearance": "4.70 in.",
+    "track_front": "",
+    "track_rear": "",
+    "cargo_length": "",
+    "width_at_wheelwell": "",
+    "width_at_wall": "",
+    "depth": "",
+    "optional_seating": "",
+    "passenger_volume": "",
+    "cargo_volume": "",
+    "cargo_volume_seats_in_place": "",
+    "maximum_cargo_volume": "",
+    "standard_towing": "",
+    "maximum_towing": "",
+    "standard_payload": "",
+    "maximum_payload": "",
+    "maximum_gvwr": "",
+    "vehicle_class": "",
+    "vehicle_rating": ""
+  },
+  "colors": [
+    {
+      "category": "Interior",
+      "name": "Bengal Red/Black Nappa, premium leather"
+    },
+    {
+      "category": "Interior",
+      "name": "Black MB-Tex/DINAMICA w/Red Stitching, leatherette/suede"
+    },
+    {
+      "category": "Interior",
+      "name": "Black Nappa w/Grey Stitching, premium leather"
+    },
+    {
+      "category": "Interior",
+      "name": "Black Nappa w/Red Stitching, premium leather"
+    },
+    {
+      "category": "Interior",
+      "name": "Macchiato Beige/Magma Grey Nappa, premium leather"
+    },
+    {
+      "category": "Interior",
+      "name": "Magma Grey/Espresso Brown Nappa, premium leather"
+    },
+    {
+      "category": "Interior",
+      "name": "designo Black/Titanium Grey Pearl Nappa, premium leather"
+    },
+    {
+      "category": "Interior",
+      "name": "designo Macchiato Beige/Titian Red Nappa, premium leather"
+    },
+    {
+      "category": "Exterior",
+      "name": "Black"
+    },
+    {
+      "category": "Exterior",
+      "name": "Dakota Brown Metallic"
+    },
+    {
+      "category": "Exterior",
+      "name": "Iridium Silver Metallic"
+    },
+    {
+      "category": "Exterior",
+      "name": "Lunar Blue Metallic"
+    },
+    {
+      "category": "Exterior",
+      "name": "Obsidian Black Metallic"
+    },
+    {
+      "category": "Exterior",
+      "name": "Polar White"
+    },
+    {
+      "category": "Exterior",
+      "name": "Ruby Black Metallic"
+    },
+    {
+      "category": "Exterior",
+      "name": "Selenite Grey Metallic"
+    },
+    {
+      "category": "Exterior",
+      "name": "designo Cardinal Red Metallic"
+    },
+    {
+      "category": "Exterior",
+      "name": "designo Diamond White Metallic"
+    },
+    {
+      "category": "Exterior",
+      "name": "designo Selenite Grey Magno"
+    }
+  ],
+  "equipment": {
+    "4wd_awd": "N/A",
+    "abs_brakes": "Std.",
+    "adjustable_foot_pedals": "N/A",
+    "air_conditioning": "N/A",
+    "alloy_wheels": "Std.",
+    "am_fm_radio": "N/A",
+    "automatic_headlights": "N/A",
+    "automatic_load_leveling": "N/A",
+    "cargo_area_cover": "N/A",
+    "cargo_area_tiedowns": "N/A",
+    "cargo_net": "N/A",
+    "cassette_player": "N/A",
+    "cd_changer": "N/A",
+    "cd_player": "N/A",
+    "child_safety_door_locks": "Std.",
+    "chrome_wheels": "N/A",
+    "cruise_control": "N/A",
+    "daytime_running_lights": "N/A",
+    "deep_tinted_glass": "N/A",
+    "driver_airbag": "Std.",
+    "driver_multi_adjustable_power_seat": "Std.",
+    "dvd_player": "N/A",
+    "electrochromic_exterior_rearview_mirror": "N/A",
+    "electrochromic_interior_rearview_mirror": "N/A",
+    "electronic_brake_assistance": "N/A",
+    "electronic_parking_aid": "N/A",
+    "first_aid_kit": "N/A",
+    "fog_lights": "N/A",
+    "front_air_dam": "N/A",
+    "front_cooled_seat": "N/A",
+    "front_heated_seat": "Std.",
+    "front_power_lumbar_support": "Std.",
+    "front_power_memory_seat": "N/A",
+    "front_side_airbag": "Std.",
+    "front_side_airbag_with_head_protection": "N/A",
+    "front_split_bench_seat": "N/A",
+    "full_size_spare_tire": "N/A",
+    "genuine_wood_trim": "N/A",
+    "glass_rear_window_on_convertible": "N/A",
+    "heated_exterior_mirror": "N/A",
+    "heated_steering_wheel": "N/A",
+    "high_intensity_discharge_headlights": "N/A",
+    "interval_wipers": "N/A",
+    "keyless_entry": "N/A",
+    "leather_seat": "N/A",
+    "leather_steering_wheel": "N/A",
+    "limited_slip_differential": "N/A",
+    "load_bearing_exterior_rack": "N/A",
+    "locking_differential": "N/A",
+    "locking_pickup_truck_tailgate": "N/A",
+    "manual_sunroof": "N/A",
+    "navigation_aid": "N/A",
+    "passenger_airbag": "Std.",
+    "passenger_multi_adjustable_power_seat": "Std.",
+    "pickup_truck_bed_liner": "N/A",
+    "pickup_truck_cargo_box_light": "N/A",
+    "power_adjustable_exterior_mirror": "N/A",
+    "power_door_locks": "N/A",
+    "power_sliding_side_van_door": "N/A",
+    "power_sunroof": "N/A",
+    "power_trunk_lid": "N/A",
+    "power_windows": "Std.",
+    "rain_sensing_wipers": "N/A",
+    "rear_spoiler": "N/A",
+    "rear_window_defogger": "N/A",
+    "rear_wiper": "N/A",
+    "remote_ignition": "N/A",
+    "removable_top": "N/A",
+    "run_flat_tires": "N/A",
+    "running_boards": "N/A",
+    "second_row_folding_seat": "N/A",
+    "second_row_heated_seat": "N/A",
+    "second_row_multi_adjustable_power_seat": "N/A",
+    "second_row_removable_seat": "N/A",
+    "second_row_side_airbag": "N/A",
+    "second_row_side_airbag_with_head_protection": "N/A",
+    "second_row_sound_controls": "N/A",
+    "separate_driver_front_passenger_climate_controls": "N/A",
+    "side_head_curtain_airbag": "Std.",
+    "skid_plate": "N/A",
+    "sliding_rear_pickup_truck_window": "N/A",
+    "splash_guards": "N/A",
+    "steel_wheels": "N/A",
+    "steering_wheel_mounted_controls": "N/A",
+    "subwoofer": "N/A",
+    "tachometer": "N/A",
+    "telematics_system": "N/A",
+    "telescopic_steering_column": "Std.",
+    "third_row_removable_seat": "N/A",
+    "tilt_steering": "N/A",
+    "tilt_steering_column": "N/A",
+    "tire_pressure_monitor": "N/A",
+    "tow_hitch_receiver": "N/A",
+    "traction_control": "N/A",
+    "trip_computer": "N/A",
+    "trunk_anti_trap_device": "N/A",
+    "vehicle_anti_theft": "Std.",
+    "vehicle_stability_control_system": "N/A",
+    "voice_activated_telephone": "N/A",
+    "wind_deflector_for_convertibles": "N/A"
+  },
+  "warranties": [
+    {
+      "type": "Basic",
+      "miles": "50,000 mile",
+      "months": "48 month"
+    },
+    {
+      "type": "Powertrain",
+      "miles": "50,000 mile",
+      "months": "48 month"
+    },
+    {
+      "type": "Rust",
+      "months": "48 month",
+      "miles": "50,000 mile"
+    }
+  ],
+  "timestamp": "2025-08-09T22:59:33.306Z"
+}

@@ -9,6 +9,8 @@ logger = logging.getLogger(__name__)
 
 
 VIN_ENDPOINT = "https://api.carsxe.com/specs"
+HISTORY_ENDPOINT = "https://api.carsxe.com/history"
+MARKETVALUE_ENDPOINT = "https://api.carsxe.com/marketvalue"
 
 
 class CarsXEError(Exception):
@@ -48,7 +50,87 @@ class CarsXEClient:
             await self._client.aclose()
             self._client = None
 
+    async def _fetch_endpoint(self, endpoint: str, vin: str, cache_prefix: str) -> Optional[Dict[str, Any]]:
+        """Fetch data from a specific CarsXE endpoint"""
+        # Check cache first if available
+        if self.cache:
+            cache_key = f"{cache_prefix}:{vin.upper()}"
+            try:
+                cached_data = await self.cache.get(cache_key)
+                if cached_data:
+                    logger.info(f"Cache hit for {cache_prefix} VIN {vin}")
+                    import json
+                    return json.loads(cached_data)
+            except Exception as e:
+                logger.warning(f"Cache get failed for {cache_prefix}: {e}")
+        
+        client = await self._get_client()
+        params = {"key": self.api_key, "vin": vin}
+        logger.info(f"Requesting {cache_prefix} from {endpoint} for VIN: {vin}")
+        
+        try:
+            resp = await client.get(
+                endpoint,
+                params=params,
+                headers={
+                    "Accept": "application/json",
+                    "Cache-Control": "no-cache",
+                },
+            )
+            
+            logger.info(f"Response status for {cache_prefix}: {resp.status_code}")
+            
+            if resp.status_code >= 400:
+                logger.warning(f"{cache_prefix} endpoint returned {resp.status_code}")
+                return None
+            
+            data = resp.json()
+            
+            # Cache the successful response if cache is available
+            if self.cache and data:
+                cache_key = f"{cache_prefix}:{vin.upper()}"
+                try:
+                    import json
+                    await self.cache.set(cache_key, json.dumps(data))
+                    logger.debug(f"Cached {cache_prefix} data for {vin}")
+                except Exception as e:
+                    logger.warning(f"Cache set failed for {cache_prefix}: {e}")
+            
+            return data
+            
+        except Exception as e:
+            logger.error(f"Error fetching {cache_prefix}: {e}")
+            return None
+    
     async def decode_vin(self, vin: str) -> Dict[str, Any]:
+        """Decode VIN and fetch all available data from multiple endpoints"""
+        # Fetch specs (main data) - this is required
+        specs_task = self._fetch_specs(vin)
+        
+        # Fetch additional data in parallel
+        history_task = self._fetch_endpoint(HISTORY_ENDPOINT, vin, "history")
+        marketvalue_task = self._fetch_endpoint(MARKETVALUE_ENDPOINT, vin, "marketvalue")
+        
+        # Wait for all tasks
+        import asyncio
+        specs_data, history_data, marketvalue_data = await asyncio.gather(
+            specs_task, history_task, marketvalue_task
+        )
+        
+        # Specs is required, others are optional enhancements
+        if not specs_data:
+            raise CarsXEError("Failed to decode VIN")
+        
+        # Add additional data if available
+        if history_data:
+            specs_data["history"] = history_data
+        if marketvalue_data:
+            specs_data["marketvalue"] = marketvalue_data
+        
+        return specs_data
+    
+    async def _fetch_specs(self, vin: str) -> Dict[str, Any]:
+        """Fetch specs data (main VIN decode)"""
         # Check cache first if available
         if self.cache:
             cache_key = f"vin:{vin.upper()}"

@@ -2,17 +2,22 @@ from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from typing import List, Optional
 
 
-def get_details_keyboard(vin: str, sections_shown: List[str] = None) -> InlineKeyboardMarkup:
+def get_details_keyboard(vin: str, has_history: bool = False, has_marketvalue: bool = False) -> InlineKeyboardMarkup:
     """Create inline keyboard for vehicle details sections"""
-    if sections_shown is None:
-        sections_shown = []
-    
     buttons = []
     
-    # Simplified button layout with fewer options
-    # Only show "Show All Details" button since we've enhanced the main card
-    if "all" not in sections_shown:
-        buttons.append([InlineKeyboardButton("📊 Show All Details", callback_data=f"show_all:{vin}")])
+    # Add buttons for available additional data
+    row = []
+    if has_marketvalue:
+        row.append(InlineKeyboardButton("💰 Market Value", callback_data=f"show_marketvalue:{vin}"))
+    if has_history:
+        row.append(InlineKeyboardButton("📜 History", callback_data=f"show_history:{vin}"))
+    
+    if row:
+        buttons.append(row)
+    
+    # Add refresh button
+    buttons.append([InlineKeyboardButton("🔄 Refresh Data", callback_data=f"refresh:{vin}")])
     
     return InlineKeyboardMarkup(buttons)
 

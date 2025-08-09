@@ -26,6 +26,10 @@ from .formatter import (
     format_features_section,
     format_comparison
 )
+from .formatter_extensions import (
+    format_market_value,
+    format_history,
+)
 from .keyboards import (
     get_details_keyboard,
     get_actions_keyboard,
@@ -174,33 +178,28 @@ async def handle_vin_decode(update: Update, context: ContextTypes.DEFAULT_TYPE, 
         await user_data_mgr.add_to_history(user_id, vin, data)
 
     try:
-        # Format the concise card view
-        card_text = format_vehicle_card(data, from_cache=from_cache)
+        # Format the comprehensive summary view
+        summary_text = format_vehicle_summary(data)
         
-        # Create inline keyboards
-        details_keyboard = get_details_keyboard(vin, sections_shown=[])
-        actions_keyboard = get_actions_keyboard(vin, user_id) if user_id else None
+        # Check what additional data is available
+        has_history = "history" in data and data["history"]
+        has_marketvalue = "marketvalue" in data and data["marketvalue"]
         
-        # Send the card with inline keyboard
+        # Create inline keyboard with available options
+        details_keyboard = get_details_keyboard(vin, has_history=has_history, has_marketvalue=has_marketvalue)
+        
+        # Send the summary with inline keyboard
         if from_callback:
             message = await update.callback_query.message.reply_text(
-                card_text,
+                summary_text,
                 parse_mode=ParseMode.MARKDOWN,
                 reply_markup=details_keyboard
             )
         else:
             message = await update.message.reply_text(
-                card_text,
+                summary_text,
                 parse_mode=ParseMode.MARKDOWN,
                 reply_markup=details_keyboard
-            )
-        
-        # Send actions as a follow-up message
-        if actions_keyboard:
-            await message.reply_text(
-                "**Quick Actions:**",
-                parse_mode=ParseMode.MARKDOWN,
-                reply_markup=actions_keyboard
             )
         
         logger.info(f"Successfully sent VIN decode card for {vin}")
@@ -375,6 +374,21 @@ async def handle_callback_query(update: Update, context: ContextTypes.DEFAULT_TY
             parse_mode=ParseMode.MARKDOWN
         )
     
+    elif data.startswith("show_marketvalue:"):
+        # Show market value data
+        vin = data.replace("show_marketvalue:", "")
+        await show_market_value(query, context, vin)
+    
+    elif data.startswith("show_history:"):
+        # Show history data
+        vin = data.replace("show_history:", "")
+        await show_history(query, context, vin)
+    
+    elif data.startswith("refresh:"):
+        # Refresh VIN data
+        vin = data.replace("refresh:", "")
+        await refresh_vin_data(query, context, vin)
+    
     elif data == "new_vin":
         # Prompt for new VIN
         await query.message.reply_text(
@@ -494,6 +508,104 @@ async def delete_saved_vehicle(query: CallbackQuery, context: ContextTypes.DEFAU
             )
     else:
         await query.message.reply_text("Failed to remove vehicle.")
+
+
+async def show_market_value(query: CallbackQuery, context: ContextTypes.DEFAULT_TYPE, vin: str) -> None:
+    """Show market value information for a vehicle"""
+    # Get stored vehicle data
+    user_data_mgr: UserDataManager = context.bot_data.get("user_data_manager")
+    data = None
+    
+    # Try to get from context first
+    if f"vehicle_data_{vin}" in context.user_data:
+        data = context.user_data[f"vehicle_data_{vin}"]
+    elif user_data_mgr:
+        data = await user_data_mgr.get_vehicle_data(vin)
+    
+    if not data:
+        await query.message.reply_text("Vehicle data not found. Please decode the VIN again.")
+        return
+    
+    # Format and send market value data
+    text = format_market_value(data)
+    await query.message.reply_text(
+        text,
+        parse_mode=ParseMode.MARKDOWN
+    )
+
+
+async def show_history(query: CallbackQuery, context: ContextTypes.DEFAULT_TYPE, vin: str) -> None:
+    """Show history information for a vehicle"""
+    # Get stored vehicle data
+    user_data_mgr: UserDataManager = context.bot_data.get("user_data_manager")
+    data = None
+    
+    # Try to get from context first
+    if f"vehicle_data_{vin}" in context.user_data:
+        data = context.user_data[f"vehicle_data_{vin}"]
+    elif user_data_mgr:
+        data = await user_data_mgr.get_vehicle_data(vin)
+    
+    if not data:
+        await query.message.reply_text("Vehicle data not found. Please decode the VIN again.")
+        return
+    
+    # Format and send history data
+    text = format_history(data)
+    await query.message.reply_text(
+        text,
+        parse_mode=ParseMode.MARKDOWN
+    )
+
+
+async def refresh_vin_data(query: CallbackQuery, context: ContextTypes.DEFAULT_TYPE, vin: str) -> None:
+    """Refresh VIN data by fetching fresh from API"""
+    client: CarsXEClient = context.bot_data["carsxe_client"]
+    
+    # Send loading message
+    await query.message.edit_text(
+        f"🔄 Refreshing data for VIN: `{vin}`\n\nPlease wait...",
+        parse_mode=ParseMode.MARKDOWN
+    )
+    
+    try:
+        # Clear cache for this VIN if cache exists
+        if client.cache:
+            for prefix in ["vin", "history", "marketvalue"]:
+                cache_key = f"{prefix}:{vin.upper()}"
+                try:
+                    await client.cache.delete(cache_key)
+                except:
+                    pass
+        
+        # Fetch fresh data
+        data = await client.decode_vin(vin)
+        
+        # Store in context
+        context.user_data[f"vehicle_data_{vin}"] = data
+        
+        # Format response
+        text = format_vehicle_summary(data)
+        
+        # Check what additional data is available
+        has_history = "history" in data and data["history"]
+        has_marketvalue = "marketvalue" in data and data["marketvalue"]
+        
+        # Create keyboard
+        keyboard = get_details_keyboard(vin, has_history=has_history, has_marketvalue=has_marketvalue)
+        
+        # Send updated message
+        await query.message.edit_text(
+            text,
+            parse_mode=ParseMode.MARKDOWN,
+            reply_markup=keyboard
+        )
+        
+    except CarsXEError as e:
+        await query.message.edit_text(f"❌ Error refreshing data: {e}")
+    except Exception as e:
+        logger.error(f"Unexpected error refreshing VIN {vin}: {e}")
+        await query.message.edit_text("❌ An unexpected error occurred. Please try again.")
 
 
 def escape_html(text: str) -> str:
