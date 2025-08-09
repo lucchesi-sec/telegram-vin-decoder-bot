@@ -1,0 +1,53 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.venv/
+pip-wheel-metadata/
+*.egg-info/
+*.egg
+
+# Compiled / build
+build/
+dist/
+*.so
+*$py.class
+
+# Packaging
+*.egg-info/
+.eggs/
+
+# Test / coverage
+.coverage*
+htmlcov/
+.pytest_cache/
+
+# dotenv
+.env
+.env.*
+
+# Logs
+*.log
+
+# VSCode / IDE
+.vscode/
+.idea/
+
+# macOS
+.DS_Store
+
+# Redis dumps
+dump.rdb
+
+# Local data
+*.sqlite3
+data/
+
+# Docker artifacts
+*.pid
+*.tgz
+

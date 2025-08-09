@@ -1,0 +1,12 @@
+# fly.toml app configuration file for vinbot-decoder
+
+app = 'vinbot-decoder'
+primary_region = 'ewr'
+
+[build]
+
+# VM resources
+[[vm]]
+  memory = '1gb'
+  cpu_kind = 'shared'
+  cpus = 1
