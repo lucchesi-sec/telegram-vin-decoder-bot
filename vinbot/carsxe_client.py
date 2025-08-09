@@ -16,10 +16,11 @@ class CarsXEError(Exception):
 
 
 class CarsXEClient:
-    def __init__(self, api_key: str, timeout_seconds: int = 15):
+    def __init__(self, api_key: str, timeout_seconds: int = 15, cache=None):
         self.api_key = api_key
         self.timeout_seconds = timeout_seconds
         self._client: Optional[httpx.AsyncClient] = None
+        self.cache = cache  # Optional cache backend
 
     async def _get_client(self) -> httpx.AsyncClient:
         if self._client is None:
@@ -48,6 +49,18 @@ class CarsXEClient:
             self._client = None
 
     async def decode_vin(self, vin: str) -> Dict[str, Any]:
+        # Check cache first if available
+        if self.cache:
+            cache_key = f"vin:{vin.upper()}"
+            try:
+                cached_data = await self.cache.get(cache_key)
+                if cached_data:
+                    logger.info(f"Cache hit for VIN {vin}")
+                    import json
+                    return json.loads(cached_data)
+            except Exception as e:
+                logger.warning(f"Cache get failed: {e}")
+        
         client = await self._get_client()
         url = VIN_ENDPOINT
         params = {"key": self.api_key, "vin": vin}
@@ -112,6 +125,17 @@ class CarsXEClient:
             raise CarsXEError(str(msg))
 
         logger.info(f"Successfully decoded VIN {vin}")
+        
+        # Cache the successful response if cache is available
+        if self.cache:
+            cache_key = f"vin:{vin.upper()}"
+            try:
+                import json
+                await self.cache.set(cache_key, json.dumps(data))
+                logger.debug(f"Cached VIN data for {vin}")
+            except Exception as e:
+                logger.warning(f"Cache set failed: {e}")
+        
         return data
     
     async def _fallback_decode(self, vin: str) -> Dict[str, Any]:
