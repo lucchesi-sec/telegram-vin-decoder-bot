@@ -510,11 +510,90 @@ def run_health_server():
     thread.start()
 
 
-def run() -> None:
+async def setup_application():
+    """Setup and return the application instance"""
     settings = load_settings()
     
+    application = (
+        ApplicationBuilder()
+        .token(settings.telegram_bot_token)
+        .build()
+    )
+
+    # Initialize cache backend (if configured)
+    cache = None
+    upstash_url = os.getenv("UPSTASH_REDIS_REST_URL", "").strip()
+    upstash_token = os.getenv("UPSTASH_REDIS_REST_TOKEN", "").strip()
+    
+    if upstash_url and upstash_token:
+        try:
+            from .upstash_cache import UpstashCache
+            cache = UpstashCache(upstash_url, upstash_token, ttl=settings.redis_ttl_seconds)
+            logger.info("Using Upstash cache for user data")
+        except Exception as e:
+            logger.warning(f"Failed to initialize Upstash cache: {e}")
+    elif settings.redis_url:
+        try:
+            from .redis_cache import RedisCache
+            cache = RedisCache(settings.redis_url, ttl=settings.redis_ttl_seconds)
+            logger.info("Using Redis cache for user data")
+        except Exception as e:
+            logger.warning(f"Failed to initialize Redis cache: {e}")
+    
+    # Initialize user data manager
+    user_data_mgr = UserDataManager(cache=cache)
+    
+    # Store settings and shared clients in bot_data
+    carsxe_client = CarsXEClient(
+        api_key=settings.carsxe_api_key,
+        timeout_seconds=settings.http_timeout_seconds
+    )
+    
+    # Set cache for CarsXE client if available
+    if cache:
+        carsxe_client.cache = cache
+    
+    application.bot_data["settings"] = settings
+    application.bot_data["carsxe_client"] = carsxe_client
+    application.bot_data["user_data_manager"] = user_data_mgr
+    application.bot_data["cache"] = cache  # Store cache reference for cleanup
+
+    # Register command handlers
+    application.add_handler(CommandHandler("start", cmd_start))
+    application.add_handler(CommandHandler("help", cmd_help))
+    application.add_handler(CommandHandler("vin", cmd_vin))
+    application.add_handler(CommandHandler("recent", cmd_recent))
+    application.add_handler(CommandHandler("saved", cmd_saved))
+    
+    # Register callback query handler
+    application.add_handler(CallbackQueryHandler(handle_callback_query))
+    
+    # Register message handler for direct VIN input
+    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, on_text))
+
+    # Ensure HTTP client closes on shutdown
+    async def on_shutdown(application) -> None:
+        carsxe_client = application.bot_data.get("carsxe_client")
+        if carsxe_client:
+            await carsxe_client.aclose()
+        cache = application.bot_data.get("cache")
+        if cache and hasattr(cache, 'aclose'):
+            await cache.aclose()
+
+    application.post_shutdown = on_shutdown
+    
+    return application
+
+
+def run() -> None:
+    """Run the bot using run_polling (handles its own event loop)"""
     # Start health check server in separate thread
     run_health_server()
+    
+    logger.info("Bot starting...")
+    
+    # Create application synchronously
+    settings = load_settings()
     
     application = (
         ApplicationBuilder()
@@ -580,9 +659,7 @@ def run() -> None:
 
     application.post_shutdown = on_shutdown
     
-    logger.info("Bot starting...")
-    
-    # run_polling manages its own event loop, so call it directly without await
+    # run_polling manages its own event loop - this is the blocking call
     application.run_polling(
         allowed_updates=Update.ALL_TYPES,
         drop_pending_updates=True
