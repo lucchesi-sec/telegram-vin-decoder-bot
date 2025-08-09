@@ -135,23 +135,10 @@ async def run() -> None:
 
 
 def main() -> None:
-    # Configure asyncio for Fly.io environment  
     try:
-        import nest_asyncio
-        nest_asyncio.apply()
-    except ImportError:
-        pass
-    
-    # Use asyncio.new_event_loop() to avoid conflicts
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-    
-    try:
-        loop.run_until_complete(run())
+        asyncio.run(run())
     except KeyboardInterrupt:
         pass
-    finally:
-        loop.close()
 
 
 if __name__ == "__main__":

@@ -21,8 +21,17 @@ jobs:
       - name: Set up Flyctl
         uses: superfly/flyctl-actions/setup-flyctl@master
 
+      - name: Set Fly.io Secrets
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        run: |
+          flyctl secrets set \
+            TELEGRAM_BOT_TOKEN="${{ secrets.TELEGRAM_BOT_TOKEN }}" \
+            CARSXE_API_KEY="${{ secrets.CARSXE_API_KEY }}" \
+            --app vinbot-decoder --stage
+
       - name: Deploy to Fly.io
         env:
-          FLY_API_TOKEN: ${{ secrets.FLY_DEPLOY_TOKEN }}
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
         run: |
           flyctl deploy --remote-only --app vinbot-decoder --strategy rolling --wait-timeout 600
