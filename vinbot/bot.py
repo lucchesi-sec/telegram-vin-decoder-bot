@@ -4,8 +4,11 @@ import asyncio
 import json
 import logging
 import os
+import signal
+import sys
 from typing import Optional
 
+from aiohttp import web
 from telegram import Update
 from telegram.constants import ParseMode
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes, MessageHandler, filters
@@ -95,6 +98,23 @@ def escape_html(text: str) -> str:
     )
 
 
+async def health_check(request):
+    """Health check endpoint for Fly.io"""
+    return web.Response(text="OK", status=200)
+
+
+async def run_health_server():
+    """Run a simple HTTP server for health checks"""
+    app = web.Application()
+    app.router.add_get('/health', health_check)
+    runner = web.AppRunner(app)
+    await runner.setup()
+    site = web.TCPSite(runner, '0.0.0.0', 8080)
+    await site.start()
+    logger.info("Health check server started on port 8080")
+    return runner
+
+
 async def run() -> None:
     settings = load_settings()
     application = (
@@ -130,11 +150,26 @@ async def run() -> None:
 
     application.post_shutdown = on_shutdown
 
-    logger.info("Bot starting...")
-    await application.run_polling()
+    # Start health check server for Fly.io
+    health_runner = await run_health_server()
+    
+    try:
+        logger.info("Bot starting...")
+        await application.run_polling()
+    finally:
+        # Clean up health server on shutdown
+        await health_runner.cleanup()
 
 
 def main() -> None:
+    # Set up signal handlers for graceful shutdown
+    def signal_handler(sig, frame):
+        logger.info('Shutting down gracefully...')
+        sys.exit(0)
+    
+    signal.signal(signal.SIGINT, signal_handler)
+    signal.signal(signal.SIGTERM, signal_handler)
+    
     try:
         asyncio.run(run())
     except KeyboardInterrupt:

@@ -15,6 +15,22 @@ primary_region = 'ewr'
 [processes]
   bot = "python -m vinbot"
 
+# Service configuration for health checks
+[[services]]
+  processes = ["bot"]
+  internal_port = 8080
+  protocol = "tcp"
+  auto_stop_machines = false
+  auto_start_machines = true
+  min_machines_running = 1
+
+  [[services.http_checks]]
+    interval = "30s"
+    timeout = "5s"
+    grace_period = "10s"
+    method = "GET"
+    path = "/health"
+
 # Optional: enable machines platform auto features if desired
 [experimental]
   auto_rollback = true
