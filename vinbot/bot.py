@@ -8,8 +8,8 @@ import signal
 import sys
 import threading
 from typing import Optional
+from http.server import HTTPServer, BaseHTTPRequestHandler
 
-from aiohttp import web
 from telegram import Update
 from telegram.constants import ParseMode
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes, MessageHandler, filters
@@ -115,36 +115,40 @@ def escape_html(text: str) -> str:
     )
 
 
-def health_check(request):
-    """Health check endpoint for Fly.io"""
-    return web.Response(text="OK", status=200)
+class HealthCheckHandler(BaseHTTPRequestHandler):
+    """Simple HTTP handler for health checks"""
+    def do_GET(self):
+        if self.path == '/health':
+            self.send_response(200)
+            self.send_header('Content-type', 'text/plain')
+            self.end_headers()
+            self.wfile.write(b'OK')
+        else:
+            self.send_response(404)
+            self.end_headers()
+    
+    def log_message(self, format, *args):
+        # Suppress request logging
+        pass
 
 
 def run_health_server():
-    """Run a simple HTTP server for health checks in a separate thread"""
-    async def start_server():
-        app = web.Application()
-        app.router.add_get('/health', health_check)
-        runner = web.AppRunner(app)
-        await runner.setup()
-        site = web.TCPSite(runner, '0.0.0.0', 8080)
-        await site.start()
+    """Run health check server in a separate thread"""
+    def serve():
+        server = HTTPServer(('0.0.0.0', 8080), HealthCheckHandler)
         logger.info("Health check server started on port 8080")
-        # Keep the server running
-        await asyncio.Event().wait()
+        server.serve_forever()
     
-    def run_in_thread():
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        loop.run_until_complete(start_server())
-    
-    thread = threading.Thread(target=run_in_thread, daemon=True)
+    thread = threading.Thread(target=serve, daemon=True)
     thread.start()
-    logger.info("Health check server thread started")
 
 
-async def run() -> None:
+def run() -> None:
     settings = load_settings()
+    
+    # Start health check server in separate thread
+    run_health_server()
+    
     application = (
         ApplicationBuilder()
         .token(settings.telegram_bot_token)
@@ -169,12 +173,14 @@ async def run() -> None:
         await carsxe_client.aclose()
 
     application.post_shutdown = on_shutdown
-
-    # Start health check server for Fly.io in separate thread
-    run_health_server()
     
     logger.info("Bot starting...")
-    await application.run_polling()
+    
+    # Use run_polling which manages its own event loop
+    application.run_polling(
+        allowed_updates=Update.ALL_TYPES,
+        drop_pending_updates=True
+    )
 
 
 def main() -> None:
@@ -186,8 +192,9 @@ def main() -> None:
     signal.signal(signal.SIGINT, signal_handler)
     signal.signal(signal.SIGTERM, signal_handler)
     
+    # run_polling manages its own event loop, so just call it directly
     try:
-        asyncio.run(run())
+        run()
     except KeyboardInterrupt:
         pass
 

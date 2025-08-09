@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import httpx
 import logging
+import ssl
 from typing import Any, Dict, Optional
 
 logger = logging.getLogger(__name__)
@@ -22,7 +23,23 @@ class CarsXEClient:
 
     async def _get_client(self) -> httpx.AsyncClient:
         if self._client is None:
-            self._client = httpx.AsyncClient(timeout=self.timeout_seconds)
+            # Create SSL context that's more permissive for production environments
+            ssl_context = ssl.create_default_context()
+            ssl_context.check_hostname = True
+            ssl_context.verify_mode = ssl.CERT_REQUIRED
+            
+            # Configure client with explicit settings to avoid redirect issues
+            self._client = httpx.AsyncClient(
+                timeout=self.timeout_seconds,
+                follow_redirects=False,  # Don't follow redirects automatically
+                limits=httpx.Limits(max_keepalive_connections=5, max_connections=10),
+                headers={
+                    "User-Agent": "VinBot/1.0 (Python/httpx)",
+                    "Accept": "application/json",
+                    "Accept-Language": "en-US,en;q=0.9",
+                },
+                verify=ssl_context,
+            )
         return self._client
 
     async def aclose(self) -> None:
@@ -37,12 +54,29 @@ class CarsXEClient:
         logger.info(f"Requesting VIN decode from {url} for VIN: {vin}")
         
         try:
+            # Log full request details for debugging
+            logger.debug(f"Request URL: {url}")
+            logger.debug(f"Request params: {params}")
+            logger.debug(f"Client base headers: {client.headers}")
+            
+            # Make request with explicit headers (client defaults will be merged)
             resp = await client.get(
                 url,
                 params=params,
-                headers={"Accept": "application/json"},
+                headers={
+                    "Accept": "application/json",
+                    "Cache-Control": "no-cache",
+                },
             )
+            
+            # Log response details
             logger.info(f"Response status: {resp.status_code}, Content-Type: {resp.headers.get('content-type', 'unknown')}")
+            logger.debug(f"Response headers: {dict(resp.headers)}")
+            
+            # Check for redirect
+            if resp.status_code in (301, 302, 303, 307, 308):
+                logger.error(f"Unexpected redirect to: {resp.headers.get('location', 'unknown')}")
+                raise CarsXEError(f"API endpoint redirected unexpectedly (status {resp.status_code})")
         except httpx.HTTPError as e:
             logger.error(f"Network error contacting CarsXE: {e}")
             raise CarsXEError(f"Network error contacting CarsXE: {e}") from e
@@ -56,11 +90,10 @@ class CarsXEClient:
             logger.error(f"Response preview: {response_preview}")
             
             if "html" in content_type or response_preview.strip().startswith("<"):
-                raise CarsXEError(
-                    f"CarsXE API returned HTML instead of JSON (status {resp.status_code}). "
-                    f"This may indicate a routing or endpoint issue. "
-                    f"URL: {url}, Response preview: {response_preview[:200]}"
-                )
+                # Try fallback with a fresh client
+                logger.warning("HTML response detected, attempting fallback with fresh client")
+                return await self._fallback_decode(vin)
+            
             raise CarsXEError(
                 f"CarsXE responded with {resp.status_code}: {response_preview[:200]}"
             )
@@ -80,4 +113,45 @@ class CarsXEClient:
 
         logger.info(f"Successfully decoded VIN {vin}")
         return data
+    
+    async def _fallback_decode(self, vin: str) -> Dict[str, Any]:
+        """Fallback method using a fresh one-shot client"""
+        logger.warning(f"Using fallback decode for VIN: {vin}")
+        
+        # Create a fresh client with minimal configuration
+        async with httpx.AsyncClient(
+            timeout=self.timeout_seconds,
+            follow_redirects=True,  # Allow redirects in fallback
+        ) as fallback_client:
+            url = VIN_ENDPOINT
+            params = {"key": self.api_key, "vin": vin}
+            
+            try:
+                resp = await fallback_client.get(
+                    url,
+                    params=params,
+                    headers={
+                        "Accept": "application/json",
+                        "User-Agent": "Mozilla/5.0 (compatible; VinBot/1.0)",
+                    },
+                )
+                
+                if resp.status_code >= 400:
+                    raise CarsXEError(f"Fallback also failed with status {resp.status_code}")
+                
+                data = resp.json()
+                
+                if isinstance(data, dict) and data.get("success") is False:
+                    msg = data.get("message") or data.get("error") or "Unknown CarsXE error"
+                    raise CarsXEError(str(msg))
+                
+                logger.info(f"Fallback decode successful for VIN {vin}")
+                return data
+                
+            except httpx.HTTPError as e:
+                logger.error(f"Fallback network error: {e}")
+                raise CarsXEError(f"Fallback network error: {e}") from e
+            except Exception as e:
+                logger.error(f"Fallback decode failed: {e}")
+                raise CarsXEError(f"Fallback decode failed: {e}") from e
 
