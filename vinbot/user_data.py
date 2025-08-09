@@ -30,6 +30,10 @@ class UserDataManager:
         """Get cache key for vehicle data"""
         return f"vehicle:{vin}"
     
+    def _get_settings_key(self, user_id: int) -> str:
+        """Get cache key for user's settings"""
+        return f"user:{user_id}:settings"
+    
     async def add_to_history(self, user_id: int, vin: str, vehicle_data: Dict[str, Any]) -> bool:
         """Add a VIN to user's search history"""
         if not self.cache:
@@ -302,3 +306,129 @@ class UserDataManager:
             "total_searches": len(history),
             "saved_vehicles": len(favorites)
         }
+    
+    async def get_user_settings(self, user_id: int) -> Dict[str, Any]:
+        """Get user's settings including preferred service and API keys
+        
+        Returns:
+            Dictionary with service preference and API keys
+        """
+        if not self.cache:
+            return {
+                "service": "CarsXE",  # Default service
+                "carsxe_api_key": None,
+                "nhtsa_api_key": None  # NHTSA doesn't need a key but keeping for consistency
+            }
+        
+        try:
+            settings_key = self._get_settings_key(user_id)
+            settings_json = await self.cache.get(settings_key)
+            
+            if settings_json:
+                settings = json.loads(settings_json)
+                # Ensure all expected keys exist
+                if "service" not in settings:
+                    settings["service"] = "CarsXE"
+                if "carsxe_api_key" not in settings:
+                    settings["carsxe_api_key"] = None
+                if "nhtsa_api_key" not in settings:
+                    settings["nhtsa_api_key"] = None
+                return settings
+            
+            # Return defaults if no settings exist
+            return {
+                "service": "CarsXE",
+                "carsxe_api_key": None,
+                "nhtsa_api_key": None
+            }
+            
+        except Exception as e:
+            logger.error(f"Error getting user settings: {e}")
+            return {
+                "service": "CarsXE",
+                "carsxe_api_key": None,
+                "nhtsa_api_key": None
+            }
+    
+    async def set_user_service(self, user_id: int, service: str) -> bool:
+        """Set user's preferred VIN decoding service
+        
+        Args:
+            user_id: User ID
+            service: Service name (CarsXE or NHTSA)
+            
+        Returns:
+            True if successful, False otherwise
+        """
+        if not self.cache:
+            return False
+        
+        try:
+            # Get current settings
+            settings = await self.get_user_settings(user_id)
+            
+            # Update service preference
+            settings["service"] = service
+            
+            # Save back to cache
+            settings_key = self._get_settings_key(user_id)
+            settings_ttl = 365 * 24 * 3600  # 1 year
+            await self.cache.set(settings_key, json.dumps(settings), ttl=settings_ttl)
+            
+            logger.info(f"Updated service preference to {service} for user {user_id}")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error setting user service: {e}")
+            return False
+    
+    async def set_user_api_key(self, user_id: int, service: str, api_key: Optional[str]) -> bool:
+        """Set user's API key for a specific service
+        
+        Args:
+            user_id: User ID
+            service: Service name (CarsXE or NHTSA)
+            api_key: API key to store
+            
+        Returns:
+            True if successful, False otherwise
+        """
+        if not self.cache:
+            return False
+        
+        try:
+            # Get current settings
+            settings = await self.get_user_settings(user_id)
+            
+            # Update API key for the specified service
+            if service.lower() == "carsxe":
+                settings["carsxe_api_key"] = api_key
+            elif service.lower() == "nhtsa":
+                settings["nhtsa_api_key"] = api_key  # NHTSA doesn't need key but keeping for consistency
+            else:
+                logger.error(f"Unknown service: {service}")
+                return False
+            
+            # Save back to cache
+            settings_key = self._get_settings_key(user_id)
+            settings_ttl = 365 * 24 * 3600  # 1 year
+            await self.cache.set(settings_key, json.dumps(settings), ttl=settings_ttl)
+            
+            logger.info(f"Updated API key for {service} for user {user_id}")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error setting API key: {e}")
+            return False
+    
+    async def clear_user_api_key(self, user_id: int, service: str) -> bool:
+        """Clear user's API key for a specific service
+        
+        Args:
+            user_id: User ID
+            service: Service name (CarsXE or NHTSA)
+            
+        Returns:
+            True if successful, False otherwise
+        """
+        return await self.set_user_api_key(user_id, service, None)

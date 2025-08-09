@@ -92,6 +92,68 @@ def get_saved_vins_keyboard(saved_vins: List[tuple]) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(buttons)
 
 
+def get_settings_keyboard(current_service: str = "CarsXE", has_carsxe_key: bool = False) -> InlineKeyboardMarkup:
+    """Create settings keyboard for service selection and API key management
+    
+    Args:
+        current_service: Currently selected service (CarsXE or NHTSA)
+        has_carsxe_key: Whether user has a CarsXE API key configured
+    """
+    buttons = []
+    
+    # Service selection buttons
+    carsxe_check = "✅" if current_service == "CarsXE" else ""
+    nhtsa_check = "✅" if current_service == "NHTSA" else ""
+    
+    buttons.append([
+        InlineKeyboardButton(
+            f"{carsxe_check} CarsXE (Premium)", 
+            callback_data="set_service:CarsXE"
+        ),
+        InlineKeyboardButton(
+            f"{nhtsa_check} NHTSA (Free)", 
+            callback_data="set_service:NHTSA"
+        )
+    ])
+    
+    # API key management for CarsXE
+    if current_service == "CarsXE":
+        if has_carsxe_key:
+            buttons.append([
+                InlineKeyboardButton("🔐 Update API Key", callback_data="update_api_key:CarsXE"),
+                InlineKeyboardButton("🗑️ Remove API Key", callback_data="remove_api_key:CarsXE")
+            ])
+        else:
+            buttons.append([
+                InlineKeyboardButton("🔑 Add API Key", callback_data="add_api_key:CarsXE")
+            ])
+    
+    # Info button
+    buttons.append([
+        InlineKeyboardButton("ℹ️ Service Info", callback_data="service_info"),
+        InlineKeyboardButton("❌ Close", callback_data="close_menu")
+    ])
+    
+    return InlineKeyboardMarkup(buttons)
+
+
+def get_service_info_keyboard() -> InlineKeyboardMarkup:
+    """Create keyboard for service information display"""
+    buttons = [
+        [InlineKeyboardButton("🔙 Back to Settings", callback_data="show_settings")],
+        [InlineKeyboardButton("❌ Close", callback_data="close_menu")]
+    ]
+    return InlineKeyboardMarkup(buttons)
+
+
+def get_api_key_prompt_keyboard() -> InlineKeyboardMarkup:
+    """Create keyboard for API key input prompt"""
+    buttons = [
+        [InlineKeyboardButton("❌ Cancel", callback_data="show_settings")]
+    ]
+    return InlineKeyboardMarkup(buttons)
+
+
 def get_sample_vin_keyboard() -> InlineKeyboardMarkup:
     """Create keyboard with sample VIN for testing"""
     buttons = [[

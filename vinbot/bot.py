@@ -58,6 +58,7 @@ WELCOME_TEXT = (
     "/vin <VIN> — Decode a VIN\n"
     "/recent — View recent searches\n"
     "/saved — View saved vehicles\n"
+    "/settings — Configure VIN decoder service\n"
     "/help — Show this help message\n\n"
     "_VIN Format: 17 characters (letters & numbers)_\n"
     "_Invalid characters: I, O, Q_"
@@ -92,12 +93,89 @@ async def on_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if not update.message or not update.message.text:
         return
     text = update.message.text.strip()
+    user_id = update.effective_user.id if update.effective_user else None
+    
+    # Check if we're waiting for an API key
+    if "awaiting_api_key" in context.user_data:
+        service = context.user_data.pop("awaiting_api_key")
+        user_data_mgr: UserDataManager = context.bot_data.get("user_data_manager")
+        
+        if user_data_mgr and user_id:
+            # Validate the API key format
+            if service == "CarsXE":
+                # Basic validation for CarsXE key
+                if len(text) < 20:
+                    await update.message.reply_text(
+                        "❌ Invalid API key format. CarsXE API keys are typically longer.\n"
+                        "Please check your key and try again.",
+                        parse_mode=ParseMode.MARKDOWN
+                    )
+                    return
+            
+            # Store the API key
+            success = await user_data_mgr.set_user_api_key(user_id, service, text)
+            if success:
+                await update.message.reply_text(
+                    f"✅ **{service} API key saved successfully!**\n\n"
+                    f"Your VIN decoding will now use {service} with your personal API key.\n"
+                    f"Use /settings to manage your preferences.",
+                    parse_mode=ParseMode.MARKDOWN
+                )
+            else:
+                await update.message.reply_text(
+                    "❌ Failed to save API key. Please try again.",
+                    parse_mode=ParseMode.MARKDOWN
+                )
+        return
+    
+    # Normal VIN handling
     if len(text) == 17 and is_valid_vin(text):
         await handle_vin_decode(update, context, normalize_vin(text))
     else:
         await update.message.reply_text(
             "I expected a 17-character VIN. Use /vin <VIN> or send the VIN directly."
         )
+
+
+async def get_user_decoder(context: ContextTypes.DEFAULT_TYPE, user_id: int) -> VINDecoderBase:
+    """Get the appropriate VIN decoder based on user settings
+    
+    Args:
+        context: Bot context
+        user_id: User ID
+        
+    Returns:
+        VIN decoder instance (CarsXE or NHTSA)
+    """
+    user_data_mgr: UserDataManager = context.bot_data.get("user_data_manager")
+    settings = context.bot_data.get("settings")
+    
+    # Get user preferences
+    user_settings = {}
+    if user_data_mgr and user_id:
+        user_settings = await user_data_mgr.get_user_settings(user_id)
+    
+    service = user_settings.get("service", "CarsXE")
+    
+    if service == "NHTSA":
+        # NHTSA doesn't require an API key
+        if "nhtsa_client" not in context.bot_data:
+            cache = context.bot_data.get("cache")
+            context.bot_data["nhtsa_client"] = NHTSAClient(cache=cache)
+        return context.bot_data["nhtsa_client"]
+    else:
+        # Default to CarsXE
+        # Check if user has a custom API key
+        user_api_key = user_settings.get("carsxe_api_key")
+        
+        if user_api_key:
+            # Create a user-specific client with their API key
+            cache = context.bot_data.get("cache")
+            timeout = settings.get("http_timeout_seconds", 15) if settings else 15
+            return CarsXEClient(api_key=user_api_key, timeout_seconds=timeout, cache=cache)
+        else:
+            # Use the default CarsXE client
+            return context.bot_data.get("carsxe_client")
 
 
 async def handle_vin_decode(update: Update, context: ContextTypes.DEFAULT_TYPE, vin: str, from_callback: bool = False) -> None:
@@ -121,8 +199,11 @@ async def handle_vin_decode(update: Update, context: ContextTypes.DEFAULT_TYPE, 
 
     # Get bot components
     settings = context.bot_data.get("settings")
-    client: CarsXEClient = context.bot_data.get("carsxe_client")
     user_data_mgr: UserDataManager = context.bot_data.get("user_data_manager")
+    user_id = update.effective_user.id if update.effective_user else None
+    
+    # Get the appropriate decoder based on user settings
+    client = await get_user_decoder(context, user_id)
     
     if not settings or not client:
         error_msg = "Bot is not initialized correctly. Try again later."
@@ -152,8 +233,9 @@ async def handle_vin_decode(update: Update, context: ContextTypes.DEFAULT_TYPE, 
     if not data:
         try:
             data = await client.decode_vin(vin)
-        except CarsXEError as e:
-            logger.error(f"CarsXE error for VIN {vin}: {e}")
+        except (CarsXEError, NHTSAError) as e:
+            service_name = client.service_name if hasattr(client, 'service_name') else "VIN decoder"
+            logger.error(f"{service_name} error for VIN {vin}: {e}")
             error_msg = f"❌ Error decoding VIN: {e}"
             if from_callback:
                 await update.callback_query.message.reply_text(error_msg)
@@ -285,6 +367,32 @@ async def cmd_saved(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     )
 
 
+async def cmd_settings(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Show settings menu for service selection and API key management"""
+    user_id = update.effective_user.id if update.effective_user else None
+    user_data_mgr: UserDataManager = context.bot_data.get("user_data_manager")
+    
+    if not user_data_mgr or not user_id:
+        await update.message.reply_text("Settings are not available.")
+        return
+    
+    # Get user settings
+    settings = await user_data_mgr.get_user_settings(user_id)
+    current_service = settings.get("service", "CarsXE")
+    has_carsxe_key = bool(settings.get("carsxe_api_key"))
+    
+    # Show settings keyboard
+    keyboard = get_settings_keyboard(current_service, has_carsxe_key)
+    await update.message.reply_text(
+        "⚙️ **Settings**\n\n"
+        f"**Current Service:** {current_service}\n"
+        f"**CarsXE API Key:** {'✅ Configured' if has_carsxe_key else '❌ Not configured'}\n\n"
+        "_Select your preferred VIN decoder service:_",
+        parse_mode=ParseMode.MARKDOWN,
+        reply_markup=keyboard
+    )
+
+
 async def handle_callback_query(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Handle all callback queries from inline keyboards"""
     query = update.callback_query
@@ -402,6 +510,107 @@ async def handle_callback_query(update: Update, context: ContextTypes.DEFAULT_TY
             query.message.text + "\n\n_[Menu closed]_",
             parse_mode=ParseMode.MARKDOWN
         )
+    
+    # Settings-related callbacks
+    elif data == "show_settings":
+        # Show settings menu
+        if user_data_mgr and user_id:
+            settings = await user_data_mgr.get_user_settings(user_id)
+            current_service = settings.get("service", "CarsXE")
+            has_carsxe_key = bool(settings.get("carsxe_api_key"))
+            
+            keyboard = get_settings_keyboard(current_service, has_carsxe_key)
+            await query.message.edit_text(
+                "⚙️ **Settings**\n\n"
+                f"**Current Service:** {current_service}\n"
+                f"**CarsXE API Key:** {'✅ Configured' if has_carsxe_key else '❌ Not configured'}\n\n"
+                "_Select your preferred VIN decoder service:_",
+                parse_mode=ParseMode.MARKDOWN,
+                reply_markup=keyboard
+            )
+    
+    elif data.startswith("set_service:"):
+        # Set VIN decoder service
+        service = data.replace("set_service:", "")
+        if user_data_mgr and user_id:
+            success = await user_data_mgr.set_user_service(user_id, service)
+            if success:
+                # Refresh the settings display
+                settings = await user_data_mgr.get_user_settings(user_id)
+                current_service = settings.get("service", "CarsXE")
+                has_carsxe_key = bool(settings.get("carsxe_api_key"))
+                
+                keyboard = get_settings_keyboard(current_service, has_carsxe_key)
+                await query.message.edit_text(
+                    f"✅ Service changed to **{service}**\n\n"
+                    "⚙️ **Settings**\n\n"
+                    f"**Current Service:** {current_service}\n"
+                    f"**CarsXE API Key:** {'✅ Configured' if has_carsxe_key else '❌ Not configured'}\n\n"
+                    "_Select your preferred VIN decoder service:_",
+                    parse_mode=ParseMode.MARKDOWN,
+                    reply_markup=keyboard
+                )
+            else:
+                await query.answer("Failed to update service", show_alert=True)
+    
+    elif data == "service_info":
+        # Show service information
+        info_text = (
+            "ℹ️ **Service Information**\n\n"
+            "**CarsXE (Premium):**\n"
+            "• Comprehensive vehicle data\n"
+            "• Market value estimates\n"
+            "• Vehicle history reports\n"
+            "• Requires API key from carsxe.com\n"
+            "• Faster response times\n\n"
+            "**NHTSA (Free):**\n"
+            "• Basic vehicle information\n"
+            "• Official government database\n"
+            "• No API key required\n"
+            "• Limited to US vehicles\n"
+            "• May have slower response times"
+        )
+        await query.message.edit_text(
+            info_text,
+            parse_mode=ParseMode.MARKDOWN,
+            reply_markup=get_service_info_keyboard()
+        )
+    
+    elif data.startswith("add_api_key:") or data.startswith("update_api_key:"):
+        # Prompt for API key input
+        service = data.split(":")[1]
+        context.user_data["awaiting_api_key"] = service
+        await query.message.reply_text(
+            f"🔑 **Enter your {service} API key:**\n\n"
+            f"Please send me your API key in the next message.\n"
+            f"_Your API key will be securely stored and encrypted._",
+            parse_mode=ParseMode.MARKDOWN,
+            reply_markup=get_api_key_prompt_keyboard()
+        )
+    
+    elif data.startswith("remove_api_key:"):
+        # Remove API key
+        service = data.replace("remove_api_key:", "")
+        if user_data_mgr and user_id:
+            success = await user_data_mgr.clear_user_api_key(user_id, service)
+            if success:
+                # Refresh the settings display
+                settings = await user_data_mgr.get_user_settings(user_id)
+                current_service = settings.get("service", "CarsXE")
+                has_carsxe_key = bool(settings.get("carsxe_api_key"))
+                
+                keyboard = get_settings_keyboard(current_service, has_carsxe_key)
+                await query.message.edit_text(
+                    f"✅ {service} API key removed\n\n"
+                    "⚙️ **Settings**\n\n"
+                    f"**Current Service:** {current_service}\n"
+                    f"**CarsXE API Key:** {'✅ Configured' if has_carsxe_key else '❌ Not configured'}\n\n"
+                    "_Select your preferred VIN decoder service:_",
+                    parse_mode=ParseMode.MARKDOWN,
+                    reply_markup=keyboard
+                )
+            else:
+                await query.answer("Failed to remove API key", show_alert=True)
 
 
 async def show_vehicle_section(query: CallbackQuery, context: ContextTypes.DEFAULT_TYPE, section: str, vin: str) -> None:
@@ -698,6 +907,7 @@ async def setup_application():
     application.add_handler(CommandHandler("vin", cmd_vin))
     application.add_handler(CommandHandler("recent", cmd_recent))
     application.add_handler(CommandHandler("saved", cmd_saved))
+    application.add_handler(CommandHandler("settings", cmd_settings))
     
     # Register callback query handler
     application.add_handler(CallbackQueryHandler(handle_callback_query))
@@ -778,6 +988,7 @@ def run() -> None:
     application.add_handler(CommandHandler("vin", cmd_vin))
     application.add_handler(CommandHandler("recent", cmd_recent))
     application.add_handler(CommandHandler("saved", cmd_saved))
+    application.add_handler(CommandHandler("settings", cmd_settings))
     
     # Register callback query handler
     application.add_handler(CallbackQueryHandler(handle_callback_query))

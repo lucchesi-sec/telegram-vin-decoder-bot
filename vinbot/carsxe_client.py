@@ -4,6 +4,7 @@ import httpx
 import logging
 import ssl
 from typing import Any, Dict, Optional
+from .vin_decoder_base import VINDecoderBase
 
 logger = logging.getLogger(__name__)
 
@@ -17,12 +18,12 @@ class CarsXEError(Exception):
     pass
 
 
-class CarsXEClient:
+class CarsXEClient(VINDecoderBase):
     def __init__(self, api_key: str, timeout_seconds: int = 15, cache=None):
-        self.api_key = api_key
+        super().__init__(api_key=api_key, cache=cache, timeout=timeout_seconds)
         self.timeout_seconds = timeout_seconds
         self._client: Optional[httpx.AsyncClient] = None
-        self.cache = cache  # Optional cache backend
+        self.service_name = "CarsXE"
 
     async def _get_client(self) -> httpx.AsyncClient:
         if self._client is None:
@@ -260,4 +261,24 @@ class CarsXEClient:
             except Exception as e:
                 logger.error(f"Fallback decode failed: {e}")
                 raise CarsXEError(f"Fallback decode failed: {e}") from e
+    
+    def format_response(self, data: Dict[str, Any]) -> Dict[str, Any]:
+        """Format CarsXE response to standardized format
+        
+        Already in the correct format, just ensure service field is set
+        """
+        if isinstance(data, dict):
+            data["service"] = "CarsXE"
+            data["cached"] = False
+        return data
+    
+    def validate_api_key(self, api_key: str) -> bool:
+        """Validate if the API key format is correct
+        
+        CarsXE API keys are typically 32-character alphanumeric strings
+        """
+        if not api_key:
+            return False
+        # Basic validation - adjust based on actual CarsXE key format
+        return len(api_key) >= 20 and api_key.replace("-", "").isalnum()
 
