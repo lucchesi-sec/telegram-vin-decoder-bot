@@ -10,3 +10,19 @@ primary_region = 'ewr'
   memory = '1gb'
   cpu_kind = 'shared'
   cpus = 1
+
+# Define the long-running bot process (no inbound HTTP service needed)
+[processes]
+  bot = "python -m vinbot"
+
+# Optional: enable machines platform auto features if desired
+[experimental]
+  auto_rollback = true
+
+[checks]
+  [checks.alive]
+    type = "process"
+    timeout = "30s"
+    grace_period = "10s"
+    interval = "60s"
+    restart_limit = 0
