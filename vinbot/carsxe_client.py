@@ -3,8 +3,6 @@ from __future__ import annotations
 import httpx
 from typing import Any, Dict, Optional
 
-from .redis_cache import RedisCache
-
 
 VIN_ENDPOINT = "https://api.carsxe.com/specs"
 
@@ -14,11 +12,10 @@ class CarsXEError(Exception):
 
 
 class CarsXEClient:
-    def __init__(self, api_key: str, timeout_seconds: int = 15, cache: Optional[RedisCache] = None):
+    def __init__(self, api_key: str, timeout_seconds: int = 15):
         self.api_key = api_key
         self.timeout_seconds = timeout_seconds
         self._client: Optional[httpx.AsyncClient] = None
-        self.cache = cache or RedisCache()
 
     async def _get_client(self) -> httpx.AsyncClient:
         if self._client is None:
@@ -29,25 +26,8 @@ class CarsXEClient:
         if self._client is not None:
             await self._client.aclose()
             self._client = None
-        if self.cache:
-            await self.cache.close()
 
     async def decode_vin(self, vin: str) -> Dict[str, Any]:
-        # Check cache first with error handling
-        if self.cache:
-            try:
-                cached_data = await self.cache.get(vin)
-                if cached_data and isinstance(cached_data, dict):
-                    # Validate cached data - ensure it's not an error response
-                    if cached_data.get("success") is not False:
-                        return cached_data
-                    # If cached data indicates failure, ignore it and fetch fresh
-            except Exception as cache_error:
-                # Log cache error but continue to API call
-                import logging
-                logger = logging.getLogger(__name__)
-                logger.warning(f"Cache get error for VIN {vin}: {cache_error}")
-        
         client = await self._get_client()
         try:
             resp = await client.get(
@@ -79,16 +59,6 @@ class CarsXEClient:
         if isinstance(data, dict) and data.get("success") is False:
             msg = data.get("message") or data.get("error") or "Unknown CarsXE error"
             raise CarsXEError(str(msg))
-
-        # Cache successful response with error handling
-        if self.cache:
-            try:
-                await self.cache.set(vin, data)
-            except Exception as cache_error:
-                # Log cache error but don't fail the request
-                import logging
-                logger = logging.getLogger(__name__)
-                logger.warning(f"Cache set error for VIN {vin}: {cache_error}")
 
         return data
 

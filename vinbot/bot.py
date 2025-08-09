@@ -17,8 +17,6 @@ from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes, Messa
 from .carsxe_client import CarsXEClient, CarsXEError
 from .config import load_settings
 from .formatter import format_vehicle_summary
-from .redis_cache import RedisCache
-from .upstash_cache import UpstashCache
 from .vin import is_valid_vin, normalize_vin
 
 
@@ -136,17 +134,9 @@ async def run() -> None:
     )
 
     # Store settings and shared client in bot_data
-    # Initialize cache - prefer Upstash if configured, otherwise Redis
-    cache = None
-    if os.getenv("UPSTASH_REDIS_REST_URL") and os.getenv("UPSTASH_REDIS_REST_TOKEN"):
-        cache = UpstashCache(ttl_seconds=settings.redis_ttl_seconds)
-    elif settings.redis_url:
-        cache = RedisCache(redis_url=settings.redis_url, ttl_seconds=settings.redis_ttl_seconds)
-    
     carsxe_client = CarsXEClient(
         api_key=settings.carsxe_api_key,
-        timeout_seconds=settings.http_timeout_seconds,
-        cache=cache
+        timeout_seconds=settings.http_timeout_seconds
     )
     application.bot_data["settings"] = settings
     application.bot_data["carsxe_client"] = carsxe_client
