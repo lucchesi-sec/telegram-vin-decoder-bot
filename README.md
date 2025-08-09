@@ -87,6 +87,7 @@ docker run --rm --env-file .env vin-bot
 ## Development
 - Lint/format tools are not included by default; feel free to add `ruff`/`black`.
 - To run in debug logging, set `LOG_LEVEL=DEBUG` in `.env`.
+- For deployment on Fly.io, ensure `fly.toml` is properly configured with `auto_stop_machines`, `auto_start_machines`, and `min_machines_running` settings.
 
 ## Disclaimer
 This is a starter scaffold. Confirm your CarsXE plan and endpoint parameters and tune the field mapping in `formatter.py` based on the actual response payload you receive.
