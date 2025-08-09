@@ -355,6 +355,26 @@ async def handle_callback_query(update: Update, context: ContextTypes.DEFAULT_TY
             else:
                 await query.message.edit_text("No saved vehicles found.")
     
+    elif data.startswith("share_vin:"):
+        # Handle share VIN functionality
+        vin = data.replace("share_vin:", "")
+        await query.message.reply_text(
+            f"📤 **Share this VIN:**\n\n"
+            f"`{vin}`\n\n"
+            f"_Copy the VIN above and share it with others!_",
+            parse_mode=ParseMode.MARKDOWN
+        )
+    
+    elif data.startswith("compare_start:"):
+        # Handle comparison functionality
+        vin = data.replace("compare_start:", "")
+        await query.message.reply_text(
+            f"📊 **VIN Comparison**\n\n"
+            f"First VIN: `{vin}`\n\n"
+            f"Please send me a second 17-character VIN to compare with this vehicle.",
+            parse_mode=ParseMode.MARKDOWN
+        )
+    
     elif data == "new_vin":
         # Prompt for new VIN
         await query.message.reply_text(
