@@ -407,30 +407,32 @@ async def show_vehicle_section(query: CallbackQuery, context: ContextTypes.DEFAU
         return
     
     # Format the appropriate section
-    if section == "specs":
-        text = format_specs_section(data)
-    elif section == "manufacturing":
-        text = format_manufacturing_section(data)
-    elif section == "dimensions":
-        text = format_dimensions_section(data)
-    elif section == "performance":
-        text = format_performance_section(data)
-    elif section == "features":
-        text = format_features_section(data)
-    elif section == "all":
+    if section == "all":
         text = format_vehicle_summary(data)
+        # For "all" section, we don't need to show any more buttons
+        keyboard = None
     else:
-        text = "Unknown section requested."
-    
-    # Update keyboard to show remaining sections
-    sections_shown = [section] if section != "all" else ["all"]
-    keyboard = get_details_keyboard(vin, sections_shown)
+        # For other sections, we'll just show the "all" button
+        if section == "specs":
+            text = format_specs_section(data)
+        elif section == "manufacturing":
+            text = format_manufacturing_section(data)
+        elif section == "dimensions":
+            text = format_dimensions_section(data)
+        elif section == "performance":
+            text = format_performance_section(data)
+        elif section == "features":
+            text = format_features_section(data)
+        else:
+            text = "Unknown section requested."
+        
+        keyboard = get_details_keyboard(vin, [section])
     
     # Send as new message
     await query.message.reply_text(
         text,
         parse_mode=ParseMode.MARKDOWN,
-        reply_markup=keyboard if section != "all" else None
+        reply_markup=keyboard
     )
 
 

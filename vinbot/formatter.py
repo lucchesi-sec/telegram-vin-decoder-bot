@@ -273,6 +273,67 @@ def format_vehicle_card(data: Dict[str, Any], from_cache: bool = False) -> str:
     if gears:
         lines.append(f"⚙️ {gears}")
     
+    # Most commonly requested specs in a consolidated view
+    lines.append("\n📋 **SPECIFICATIONS**")
+    lines.append("─" * 20)
+    
+    specs_fields = [
+        ("Trim", attrs.get("trim")),
+        ("Series", attrs.get("series")),
+        ("Product Type", attrs.get("product_type")),
+    ]
+    
+    for label, value in specs_fields:
+        if value:
+            lines.append(f"**{label}:** {_format_value(value)}")
+    
+    # Dimensions
+    lines.append("\n📏 **DIMENSIONS**")
+    lines.append("─" * 20)
+    
+    dimension_fields = [
+        ("Length", attrs.get("length_mm"), "mm"),
+        ("Width", attrs.get("width_mm"), "mm"),
+        ("Height", attrs.get("height_mm"), "mm"),
+        ("Wheelbase", attrs.get("wheelbase_mm"), "mm"),
+    ]
+    
+    for label, value, unit in dimension_fields:
+        if value:
+            lines.append(f"**{label}:** {_format_value(value)} {unit}")
+    
+    # Weight
+    weight_empty = attrs.get("weight_empty_kg")
+    if weight_empty:
+        lines.append(f"**Empty Weight:** {_format_value(weight_empty)} kg")
+    
+    # Performance
+    lines.append("\n🏁 **PERFORMANCE**")
+    lines.append("─" * 20)
+    
+    performance_fields = [
+        ("Max Speed", attrs.get("max_speed_kmh"), "km/h"),
+        ("CO2 Emission", attrs.get("avg_co2_emission_g_km"), "g/km"),
+    ]
+    
+    for label, value, unit in performance_fields:
+        if value:
+            lines.append(f"**{label}:** {_format_value(value)} {unit}")
+    
+    # Features
+    lines.append("\n🔧 **FEATURES**")
+    lines.append("─" * 20)
+    
+    feature_fields = [
+        ("Doors", attrs.get("no_of_doors")),
+        ("Seats", attrs.get("no_of_seats")),
+        ("ABS", attrs.get("abs")),
+    ]
+    
+    for label, value in feature_fields:
+        if value:
+            lines.append(f"**{label}:** {_format_value(value)}")
+    
     # Cache indicator
     if from_cache:
         lines.append("\n⚡ _Retrieved from cache_")

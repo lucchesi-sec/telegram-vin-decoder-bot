@@ -9,32 +9,10 @@ def get_details_keyboard(vin: str, sections_shown: List[str] = None) -> InlineKe
     
     buttons = []
     
-    # First row - Main sections
-    row1 = []
-    if "specs" not in sections_shown:
-        row1.append(InlineKeyboardButton("📋 Specs", callback_data=f"show_specs:{vin}"))
-    if "manufacturing" not in sections_shown:
-        row1.append(InlineKeyboardButton("🏭 Manufacturing", callback_data=f"show_manufacturing:{vin}"))
-    if buttons or row1:
-        buttons.append(row1)
-    
-    # Second row - Technical details
-    row2 = []
-    if "dimensions" not in sections_shown:
-        row2.append(InlineKeyboardButton("📏 Dimensions", callback_data=f"show_dimensions:{vin}"))
-    if "performance" not in sections_shown:
-        row2.append(InlineKeyboardButton("🏁 Performance", callback_data=f"show_performance:{vin}"))
-    if row2:
-        buttons.append(row2)
-    
-    # Third row - Additional info
-    row3 = []
-    if "features" not in sections_shown:
-        row3.append(InlineKeyboardButton("🔧 Features", callback_data=f"show_features:{vin}"))
+    # Simplified button layout with fewer options
+    # Only show "Show All Details" button since we've enhanced the main card
     if "all" not in sections_shown:
-        row3.append(InlineKeyboardButton("📊 All Details", callback_data=f"show_all:{vin}"))
-    if row3:
-        buttons.append(row3)
+        buttons.append([InlineKeyboardButton("📊 Show All Details", callback_data=f"show_all:{vin}")])
     
     return InlineKeyboardMarkup(buttons)
 
