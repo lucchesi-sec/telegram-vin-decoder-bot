@@ -131,20 +131,27 @@ async def run() -> None:
     application.post_shutdown = on_shutdown
 
     logger.info("Bot starting...")
-    await application.run_polling(close_loop=False)
+    await application.run_polling()
 
 
 def main() -> None:
+    # Configure asyncio for Fly.io environment  
     try:
         import nest_asyncio
         nest_asyncio.apply()
     except ImportError:
         pass
     
+    # Use asyncio.new_event_loop() to avoid conflicts
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    
     try:
-        asyncio.run(run())
+        loop.run_until_complete(run())
     except KeyboardInterrupt:
         pass
+    finally:
+        loop.close()
 
 
 if __name__ == "__main__":
