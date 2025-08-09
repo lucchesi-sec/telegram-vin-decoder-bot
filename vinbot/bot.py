@@ -87,22 +87,64 @@ async def handle_vin_decode(update: Update, context: ContextTypes.DEFAULT_TYPE, 
 
     try:
         summary = format_vehicle_summary(data)
-        # For now, just send the summary without the JSON details to avoid formatting issues
-        await update.message.reply_text(f"✅ {summary}")
+        
+        # Split message if it's too long (Telegram limit is 4096 characters)
+        if len(summary) <= 4096:
+            await update.message.reply_text(
+                summary,
+                parse_mode=ParseMode.MARKDOWN
+            )
+        else:
+            # Split into multiple messages if needed
+            parts = []
+            current_part = []
+            current_length = 0
+            
+            for line in summary.split('\n'):
+                line_length = len(line) + 1  # +1 for newline
+                if current_length + line_length > 4000:  # Leave some buffer
+                    parts.append('\n'.join(current_part))
+                    current_part = [line]
+                    current_length = line_length
+                else:
+                    current_part.append(line)
+                    current_length += line_length
+            
+            if current_part:
+                parts.append('\n'.join(current_part))
+            
+            for part in parts:
+                await update.message.reply_text(
+                    part,
+                    parse_mode=ParseMode.MARKDOWN
+                )
         
         # Log success for debugging
         logger.info(f"Successfully sent VIN decode for {vin}")
     except Exception as e:
         logger.exception(f"Error formatting/sending response for VIN {vin}")
-        # Try to send at least basic info
+        # Try to send without markdown formatting
         try:
-            basic_info = f"✅ VIN decoded successfully\n"
-            if isinstance(data, dict) and "attributes" in data:
-                attrs = data["attributes"]
-                basic_info += f"Make: {attrs.get('make', 'N/A')}\n"
-                basic_info += f"Model: {attrs.get('model', 'N/A')}\n"
-                basic_info += f"Year: {attrs.get('year', 'N/A')}"
-            await update.message.reply_text(basic_info)
+            summary = format_vehicle_summary(data)
+            # Remove markdown formatting
+            summary_plain = summary.replace("**", "").replace("`", "")
+            
+            if len(summary_plain) <= 4096:
+                await update.message.reply_text(summary_plain)
+            else:
+                # Send just the essential info
+                basic_info = "✅ VIN decoded successfully\n\n"
+                if isinstance(data, dict) and "attributes" in data:
+                    attrs = data["attributes"]
+                    basic_info += f"VIN: {attrs.get('vin', 'N/A')}\n"
+                    basic_info += f"Year: {attrs.get('year', 'N/A')}\n"
+                    basic_info += f"Make: {attrs.get('make', 'N/A')}\n"
+                    basic_info += f"Model: {attrs.get('model', 'N/A')}\n"
+                    basic_info += f"Body: {attrs.get('body', 'N/A')}\n"
+                    basic_info += f"Fuel Type: {attrs.get('fuel_type', 'N/A')}\n"
+                    basic_info += f"Manufacturer: {attrs.get('manufacturer', 'N/A')}\n"
+                    basic_info += f"Plant Country: {attrs.get('plant_country', 'N/A')}"
+                await update.message.reply_text(basic_info)
         except:
             await update.message.reply_text("✅ VIN decoded but had trouble formatting the response.")
 
