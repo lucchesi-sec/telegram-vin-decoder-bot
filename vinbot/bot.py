@@ -582,7 +582,7 @@ def run() -> None:
     
     logger.info("Bot starting...")
     
-    # Use run_polling which manages its own event loop
+    # run_polling manages its own event loop, so call it directly without await
     application.run_polling(
         allowed_updates=Update.ALL_TYPES,
         drop_pending_updates=True
