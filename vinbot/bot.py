@@ -6,6 +6,7 @@ import logging
 import os
 import signal
 import sys
+import threading
 from typing import Optional
 
 from aiohttp import web
@@ -98,21 +99,32 @@ def escape_html(text: str) -> str:
     )
 
 
-async def health_check(request):
+def health_check(request):
     """Health check endpoint for Fly.io"""
     return web.Response(text="OK", status=200)
 
 
-async def run_health_server():
-    """Run a simple HTTP server for health checks"""
-    app = web.Application()
-    app.router.add_get('/health', health_check)
-    runner = web.AppRunner(app)
-    await runner.setup()
-    site = web.TCPSite(runner, '0.0.0.0', 8080)
-    await site.start()
-    logger.info("Health check server started on port 8080")
-    return runner
+def run_health_server():
+    """Run a simple HTTP server for health checks in a separate thread"""
+    async def start_server():
+        app = web.Application()
+        app.router.add_get('/health', health_check)
+        runner = web.AppRunner(app)
+        await runner.setup()
+        site = web.TCPSite(runner, '0.0.0.0', 8080)
+        await site.start()
+        logger.info("Health check server started on port 8080")
+        # Keep the server running
+        await asyncio.Event().wait()
+    
+    def run_in_thread():
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        loop.run_until_complete(start_server())
+    
+    thread = threading.Thread(target=run_in_thread, daemon=True)
+    thread.start()
+    logger.info("Health check server thread started")
 
 
 async def run() -> None:
@@ -150,15 +162,11 @@ async def run() -> None:
 
     application.post_shutdown = on_shutdown
 
-    # Start health check server for Fly.io
-    health_runner = await run_health_server()
+    # Start health check server for Fly.io in separate thread
+    run_health_server()
     
-    try:
-        logger.info("Bot starting...")
-        await application.run_polling()
-    finally:
-        # Clean up health server on shutdown
-        await health_runner.cleanup()
+    logger.info("Bot starting...")
+    await application.run_polling()
 
 
 def main() -> None:
