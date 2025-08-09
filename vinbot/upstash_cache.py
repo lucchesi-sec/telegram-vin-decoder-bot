@@ -51,7 +51,8 @@ class UpstashCache:
             url = f"{self.rest_url}/get/{key}"
             headers = {"Authorization": f"Bearer {self.rest_token}"}
             
-            async with aiohttp.ClientSession() as session:
+            timeout = aiohttp.ClientTimeout(total=5.0)  # 5 second timeout for cache
+            async with aiohttp.ClientSession(timeout=timeout) as session:
                 async with session.get(url, headers=headers) as response:
                     if response.status == 200:
                         data = await response.json()
@@ -93,7 +94,8 @@ class UpstashCache:
                 "Content-Type": "text/plain"
             }
             
-            async with aiohttp.ClientSession() as session:
+            timeout = aiohttp.ClientTimeout(total=5.0)  # 5 second timeout for cache
+            async with aiohttp.ClientSession(timeout=timeout) as session:
                 async with session.post(url, headers=headers, data=json_data) as response:
                     if response.status == 200:
                         logger.info(f"Cached data for VIN: {vin}")
