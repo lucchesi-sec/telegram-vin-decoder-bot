@@ -4,6 +4,6 @@ VIN Decoder Telegram Bot package.
 Run via: python -m vinbot
 """
 
-from .bot import main
+from .bot import run
 
-__all__ = ["main"]
+__all__ = ["run"]

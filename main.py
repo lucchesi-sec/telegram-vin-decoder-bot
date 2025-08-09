@@ -5,7 +5,7 @@ Main entry point for the Telegram VIN decoder bot.
 
 import logging
 import sys
-from vinbot.bot import main
+from vinbot.bot import run
 
 logging.basicConfig(
     level=logging.INFO,
@@ -14,7 +14,7 @@ logging.basicConfig(
 
 if __name__ == "__main__":
     try:
-        main()
+        run()
     except KeyboardInterrupt:
         logging.info("Bot stopped by user")
         sys.exit(0)

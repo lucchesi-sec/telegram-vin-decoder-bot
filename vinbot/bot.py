@@ -589,7 +589,7 @@ def run() -> None:
     )
 
 
-def main() -> None:
+if __name__ == "__main__":
     # Set up signal handlers for graceful shutdown
     def signal_handler(sig, frame):
         logger.info('Shutting down gracefully...')
@@ -603,8 +603,4 @@ def main() -> None:
         run()
     except KeyboardInterrupt:
         pass
-
-
-if __name__ == "__main__":
-    main()
 
