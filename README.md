@@ -1,19 +1,21 @@
-# Telegram VIN Decoder Bot (CarsXE)
+# Telegram VIN Decoder Bot
 
-A Telegram bot that takes a VIN, decodes it using the CarsXE API, and returns detailed vehicle information.
+A Telegram bot that takes a VIN, decodes it using either the free NHTSA API or the premium Auto.dev API, and returns detailed vehicle information.
 
 ## Features
 - Accepts VIN via command or plain message
 - Validates VIN format before calling the API
-- Fetches decoded details from CarsXE (async HTTP)
+- Fetches decoded details from NHTSA (free) or Auto.dev (premium)
 - Formats a readable vehicle summary
 - Config via environment variables
 - Optional Docker support
+- User settings to switch between services
+- API key management for premium services
 
 ## Prerequisites
 - Python 3.9+
 - Telegram Bot Token from @BotFather
-- CarsXE API key (https://www.carsxe.com/)
+- Auto.dev API key (optional, https://auto.dev/)
 
 ## Quick Start
 
@@ -29,7 +31,7 @@ pip install -r requirements.txt
 
 ```bash
 cp .env.example .env
-# edit .env to add TELEGRAM_BOT_TOKEN and CARSXE_API_KEY
+# edit .env to add TELEGRAM_BOT_TOKEN
 ```
 
 3. Run the bot:
@@ -44,18 +46,44 @@ The bot starts polling. In Telegram, send your bot a message with a 17-character
 - `/start` — brief intro and instructions
 - `/help` — usage help
 - `/vin <VIN>` — decode a VIN directly
+- `/settings` — configure service preferences and API keys
+- `/recent` — view recent searches
+- `/saved` — view saved vehicles
 
 You can also just send a plain 17-character VIN and the bot will decode it.
+
+## Services
+
+### NHTSA (Default)
+The bot uses the free NHTSA API by default, which provides basic vehicle information including:
+- Make, model, and year
+- Body type and vehicle type
+- Engine specifications
+- Manufacturing details
+
+No API key is required for NHTSA.
+
+### Auto.dev (Premium)
+For more detailed vehicle information, you can switch to Auto.dev:
+- Comprehensive vehicle specifications
+- Detailed engine and transmission data
+- Market value information
+- Vehicle history (where available)
+- Additional features and equipment
+
+To use Auto.dev:
+1. Get an API key from https://auto.dev/
+2. Use the `/settings` command in the bot
+3. Select "Auto.dev (Premium)"
+4. Add your API key when prompted
 
 ## Configuration
 Environment variables (via `.env`):
 - `TELEGRAM_BOT_TOKEN`: Telegram bot token from @BotFather
-- `CARSXE_API_KEY`: CarsXE API key
 - `HTTP_TIMEOUT_SECONDS` (optional): HTTP client timeout in seconds (default 15)
 - `LOG_LEVEL` (optional): INFO, DEBUG, etc.
-
-## CarsXE API Notes
-This bot targets the CarsXE VIN Decode endpoint, typically `https://api.carsxe.com/vin` with query params `key` and `vin`. If your plan or endpoint differs, adjust `VIN_ENDPOINT` in `vinbot/carsxe_client.py` accordingly.
+- `REDIS_URL` (optional): Redis connection URL for caching
+- `REDIS_TTL_SECONDS` (optional): Cache TTL in seconds (default 86400)
 
 ## Docker
 Build and run with Docker:
@@ -78,9 +106,13 @@ docker run --rm --env-file .env vin-bot
 └── vinbot/
     ├── __init__.py
     ├── bot.py
-    ├── carsxe_client.py
+    ├── autodev_client.py
+    ├── nhtsa_client.py
+    ├── vin_decoder_base.py
     ├── config.py
     ├── formatter.py
+    ├── keyboards.py
+    ├── user_data.py
     └── vin.py
 ```
 
@@ -90,4 +122,4 @@ docker run --rm --env-file .env vin-bot
 - For deployment on Fly.io, ensure `fly.toml` is properly configured with `auto_stop_machines`, `auto_start_machines`, and `min_machines_running` settings.
 
 ## Disclaimer
-This is a starter scaffold. Confirm your CarsXE plan and endpoint parameters and tune the field mapping in `formatter.py` based on the actual response payload you receive.
+This is a starter scaffold. The field mapping in `formatter.py` may need to be adjusted based on the actual response payload you receive from the APIs.

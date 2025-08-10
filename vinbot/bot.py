@@ -15,6 +15,7 @@ from telegram.constants import ParseMode
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes, MessageHandler, filters, CallbackQueryHandler
 
 from .nhtsa_client import NHTSAClient, NHTSAError
+from .autodev_client import AutoDevClient, AutoDevError
 from .vin_decoder_base import VINDecoderBase
 from .config import load_settings
 from .formatter import (
@@ -39,7 +40,10 @@ from .keyboards import (
     get_sample_vin_keyboard,
     get_comparison_keyboard,
     get_confirmation_keyboard,
-    get_close_button
+    get_close_button,
+    get_settings_keyboard,
+    get_service_info_keyboard,
+    get_api_key_prompt_keyboard
 )
 from .user_data import UserDataManager
 from .vin import is_valid_vin, normalize_vin
@@ -50,7 +54,7 @@ logger = logging.getLogger(__name__)
 
 WELCOME_TEXT = (
     "🚗 **Welcome to VIN Decoder Bot!**\n\n"
-    "I can decode Vehicle Identification Numbers (VINs) using the official NHTSA database.\n\n"
+    "I can decode Vehicle Identification Numbers (VINs) using the official NHTSA database or Auto.dev.\n\n"
     "**How to use:**\n"
     "• Send me a 17-character VIN directly\n"
     "• Use /vin <VIN> command\n"
@@ -59,10 +63,11 @@ WELCOME_TEXT = (
     "/vin <VIN> — Decode a VIN\n"
     "/recent — View recent searches\n"
     "/saved — View saved vehicles\n"
+    "/settings — Configure your preferences\n"
     "/help — Show this help message\n\n"
     "_VIN Format: 17 characters (letters & numbers)_\n"
     "_Invalid characters: I, O, Q_\n"
-    "_Data provided by NHTSA (National Highway Traffic Safety Administration)_"
+    "_Data provided by NHTSA or Auto.dev_"
 )
 
 
@@ -82,6 +87,50 @@ async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     )
 
 
+async def cmd_settings(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Show user settings for service selection and API key management"""
+    user_data_mgr: UserDataManager = context.bot_data.get("user_data_manager")
+    user_id = update.effective_user.id if update.effective_user else None
+    
+    if not user_data_mgr or not user_id:
+        await update.message.reply_text("Settings are not available.")
+        return
+    
+    # Get user settings
+    settings = await user_data_mgr.get_user_settings(user_id)
+    current_service = settings.get("service", "NHTSA")
+    has_autodev_key = bool(settings.get("autodev_api_key"))
+    
+    # Create settings keyboard
+    from .keyboards import get_settings_keyboard
+    keyboard = get_settings_keyboard(
+        current_service=current_service,
+        has_autodev_key=has_autodev_key
+    )
+    
+    # Service descriptions
+    service_desc = {
+        "NHTSA": "✅ Using NHTSA (Free, no API key required)",
+        "AutoDev": "🔄 Using Auto.dev (Requires API key)"
+    }
+    
+    current_desc = service_desc.get(current_service, "NHTSA (Free)")
+    
+    text = (
+        "⚙️ **Settings**\n\n"
+        f"**Current Service:** {current_desc}\n\n"
+        "Select a service below to change your preference. "
+        "Auto.dev provides more detailed vehicle information but requires an API key.\n\n"
+        "NHTSA is completely free and provides basic vehicle information."
+    )
+    
+    await update.message.reply_text(
+        text,
+        parse_mode=ParseMode.MARKDOWN,
+        reply_markup=keyboard
+    )
+
+
 async def cmd_vin(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if not context.args:
         await update.message.reply_text("Usage: /vin <17-character VIN>")
@@ -96,6 +145,58 @@ async def on_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     text = update.message.text.strip()
     user_id = update.effective_user.id if update.effective_user else None
     
+    # Check if we're waiting for an API key
+    if context.user_data.get("awaiting_api_key_for"):
+        service = context.user_data["awaiting_api_key_for"]
+        is_update = context.user_data.get("api_key_update", False)
+        
+        # Clear the state
+        del context.user_data["awaiting_api_key_for"]
+        if "api_key_update" in context.user_data:
+            del context.user_data["api_key_update"]
+        
+        # Validate and save the API key
+        user_data_mgr: UserDataManager = context.bot_data.get("user_data_manager")
+        if user_data_mgr and user_id:
+            # For Auto.dev, validate the key format
+            is_valid = True
+            if service == "AutoDev":
+                from .autodev_client import AutoDevClient
+                client = AutoDevClient(api_key=text)
+                is_valid = client.validate_api_key(text)
+            
+            if is_valid:
+                await user_data_mgr.set_user_api_key(user_id, service, text)
+                
+                # If this is a new key for the current service, update the service
+                if not is_update:
+                    settings = await user_data_mgr.get_user_settings(user_id)
+                    current_service = settings.get("service", "NHTSA")
+                    if current_service == service:
+                        # Already using this service, just confirm the key was set
+                        pass
+                    else:
+                        # Switch to this service
+                        await user_data_mgr.set_user_service(user_id, service)
+                
+                service_name = "Auto.dev" if service == "AutoDev" else service
+                await update.message.reply_text(
+                    f"✅ API key for {service_name} has been saved successfully!\n\n"
+                    f"You are now using {service_name} for VIN decoding."
+                )
+                
+                # Show updated settings
+                await show_settings_menu(update, context)
+            else:
+                service_name = "Auto.dev" if service == "AutoDev" else service
+                await update.message.reply_text(
+                    f"❌ Invalid {service_name} API key format.\n\n"
+                    "Please check your key and try again, or contact support if you believe this is an error."
+                )
+                # Show settings again
+                await show_settings_menu(update, context)
+        return
+    
     # Normal VIN handling
     if len(text) == 17 and is_valid_vin(text):
         await handle_vin_decode(update, context, normalize_vin(text))
@@ -105,17 +206,96 @@ async def on_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         )
 
 
+async def show_settings_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Show the settings menu"""
+    user_data_mgr: UserDataManager = context.bot_data.get("user_data_manager")
+    user_id = update.effective_user.id if update.effective_user else None
+    
+    if not user_data_mgr or not user_id:
+        # Fallback message
+        await update.message.reply_text("Settings are not available.")
+        return
+    
+    # Get user settings
+    settings = await user_data_mgr.get_user_settings(user_id)
+    current_service = settings.get("service", "NHTSA")
+    has_autodev_key = bool(settings.get("autodev_api_key"))
+    
+    # Create settings keyboard
+    from .keyboards import get_settings_keyboard
+    keyboard = get_settings_keyboard(
+        current_service=current_service,
+        has_autodev_key=has_autodev_key
+    )
+    
+    # Service descriptions
+    service_desc = {
+        "NHTSA": "✅ Using NHTSA (Free, no API key required)",
+        "AutoDev": "🔄 Using Auto.dev (Requires API key)"
+    }
+    
+    current_desc = service_desc.get(current_service, "NHTSA (Free)")
+    
+    text = (
+        "⚙️ **Settings**\\n\\n"
+        f"**Current Service:** {current_desc}\\n\\n"
+        "Select a service below to change your preference. "
+        "Auto.dev provides more detailed vehicle information but requires an API key.\\n\\n"
+        "NHTSA is completely free and provides basic vehicle information."
+    )
+    
+    if update.callback_query:
+        await update.callback_query.message.edit_text(
+            text,
+            parse_mode=ParseMode.MARKDOWN,
+            reply_markup=keyboard
+        )
+    elif update.message:
+        await update.message.reply_text(
+            text,
+            parse_mode=ParseMode.MARKDOWN,
+            reply_markup=keyboard
+        )
+
+
 async def get_user_decoder(context: ContextTypes.DEFAULT_TYPE, user_id: int) -> VINDecoderBase:
-    """Get the NHTSA VIN decoder
+    """Get the user's preferred VIN decoder based on their settings
     
     Args:
         context: Bot context
-        user_id: User ID (unused, kept for compatibility)
+        user_id: User ID
         
     Returns:
-        NHTSA VIN decoder instance
+        VIN decoder instance based on user's preference
     """
-    # Always use NHTSA - it's free and doesn't require an API key
+    # Get user data manager
+    user_data_mgr: UserDataManager = context.bot_data.get("user_data_manager")
+    
+    # Get user settings
+    user_settings = {}
+    if user_data_mgr and user_id:
+        user_settings = await user_data_mgr.get_user_settings(user_id)
+    
+    # Determine which service to use
+    service = user_settings.get("service", "NHTSA")  # Default to NHTSA
+    
+    # Initialize the appropriate client based on user preference
+    if service == "AutoDev":
+        # Check if user has an Auto.dev API key
+        api_key = user_settings.get("autodev_api_key")
+        if api_key:
+            # Create Auto.dev client with user's API key
+            cache = context.bot_data.get("cache")
+            if f"autodev_client_{user_id}" not in context.user_data:
+                context.user_data[f"autodev_client_{user_id}"] = AutoDevClient(
+                    api_key=api_key, cache=cache
+                )
+            return context.user_data[f"autodev_client_{user_id}"]
+        else:
+            # Fall back to NHTSA if no API key is set
+            service = "NHTSA"
+    
+    # For NHTSA or fallback, use the shared NHTSA client
     if "nhtsa_client" not in context.bot_data:
         cache = context.bot_data.get("cache")
         context.bot_data["nhtsa_client"] = NHTSAClient(cache=cache)
@@ -432,6 +612,180 @@ async def handle_callback_query(update: Update, context: ContextTypes.DEFAULT_TY
         )
     
     # Settings-related callbacks
+    elif data == "show_settings":
+        # Show settings menu
+        user_data_mgr: UserDataManager = context.bot_data.get("user_data_manager")
+        user_id = update.effective_user.id if update.effective_user else None
+        
+        if user_data_mgr and user_id:
+            settings = await user_data_mgr.get_user_settings(user_id)
+            current_service = settings.get("service", "NHTSA")
+            has_autodev_key = bool(settings.get("autodev_api_key"))
+            
+            from .keyboards import get_settings_keyboard
+            keyboard = get_settings_keyboard(
+                current_service=current_service,
+                has_autodev_key=has_autodev_key
+            )
+            
+            service_desc = {
+                "NHTSA": "✅ Using NHTSA (Free, no API key required)",
+                "AutoDev": "🔄 Using Auto.dev (Requires API key)"
+            }
+            
+            current_desc = service_desc.get(current_service, "NHTSA (Free)")
+            
+            text = (
+                "⚙️ **Settings**\n\n"
+                f"**Current Service:** {current_desc}\n\n"
+                "Select a service below to change your preference. "
+                "Auto.dev provides more detailed vehicle information but requires an API key.\n\n"
+                "NHTSA is completely free and provides basic vehicle information."
+            )
+            
+            await query.message.edit_text(
+                text,
+                parse_mode=ParseMode.MARKDOWN,
+                reply_markup=keyboard
+            )
+    
+    elif data.startswith("set_service:"):
+        # Set user's preferred service
+        service = data.split(":")[1]
+        user_data_mgr: UserDataManager = context.bot_data.get("user_data_manager")
+        user_id = update.effective_user.id if update.effective_user else None
+        
+        if user_data_mgr and user_id:
+            # Update user's service preference
+            await user_data_mgr.set_user_service(user_id, service)
+            
+            # Get updated settings
+            settings = await user_data_mgr.get_user_settings(user_id)
+            current_service = settings.get("service", "NHTSA")
+            has_autodev_key = bool(settings.get("autodev_api_key"))
+            
+            from .keyboards import get_settings_keyboard
+            keyboard = get_settings_keyboard(
+                current_service=current_service,
+                has_autodev_key=has_autodev_key
+            )
+            
+            service_desc = {
+                "NHTSA": "✅ Using NHTSA (Free, no API key required)",
+                "AutoDev": "🔄 Using Auto.dev (Requires API key)"
+            }
+            
+            current_desc = service_desc.get(current_service, "NHTSA (Free)")
+            
+            text = (
+                "⚙️ **Settings**\n\n"
+                f"**Current Service:** {current_desc}\n\n"
+                "Select a service below to change your preference. "
+                "Auto.dev provides more detailed vehicle information but requires an API key.\n\n"
+                "NHTSA is completely free and provides basic vehicle information."
+            )
+            
+            await query.message.edit_text(
+                text,
+                parse_mode=ParseMode.MARKDOWN,
+                reply_markup=keyboard
+            )
+    
+    elif data.startswith("add_api_key:") or data.startswith("update_api_key:"):
+        # Prompt user to enter API key
+        service = data.split(":")[1]
+        context.user_data["awaiting_api_key_for"] = service
+        context.user_data["api_key_update"] = data.startswith("update_api_key:")
+        
+        service_name = "Auto.dev" if service == "AutoDev" else service
+        
+        await query.message.reply_text(
+            f"🔑 **Enter your {service_name} API Key**\n\n"
+            f"Please send your {service_name} API key in the next message.\n\n"
+            "Note: Your API key will be stored securely and used only for VIN decoding requests.",
+            parse_mode=ParseMode.MARKDOWN,
+            reply_markup=get_api_key_prompt_keyboard()
+        )
+    
+    elif data.startswith("remove_api_key:"):
+        # Remove API key for a service
+        service = data.split(":")[1]
+        user_data_mgr: UserDataManager = context.bot_data.get("user_data_manager")
+        user_id = update.effective_user.id if update.effective_user else None
+        
+        if user_data_mgr and user_id:
+            # Clear the API key
+            await user_data_mgr.clear_user_api_key(user_id, service)
+            
+            # If this was the current service, switch back to NHTSA
+            settings = await user_data_mgr.get_user_settings(user_id)
+            current_service = settings.get("service", "NHTSA")
+            if current_service == service:
+                await user_data_mgr.set_user_service(user_id, "NHTSA")
+            
+            # Show updated settings
+            updated_settings = await user_data_mgr.get_user_settings(user_id)
+            current_service = updated_settings.get("service", "NHTSA")
+            has_autodev_key = bool(updated_settings.get("autodev_api_key"))
+            
+            from .keyboards import get_settings_keyboard
+            keyboard = get_settings_keyboard(
+                current_service=current_service,
+                has_autodev_key=has_autodev_key
+            )
+            
+            service_desc = {
+                "NHTSA": "✅ Using NHTSA (Free, no API key required)",
+                "AutoDev": "🔄 Using Auto.dev (Requires API key)"
+            }
+            
+            current_desc = service_desc.get(current_service, "NHTSA (Free)")
+            
+            text = (
+                "⚙️ **Settings**\n\n"
+                f"**Current Service:** {current_desc}\n\n"
+                "Select a service below to change your preference. "
+                "Auto.dev provides more detailed vehicle information but requires an API key.\n\n"
+                "NHTSA is completely free and provides basic vehicle information."
+            )
+            
+            await query.message.edit_text(
+                text,
+                parse_mode=ParseMode.MARKDOWN,
+                reply_markup=keyboard
+            )
+            
+            # Notify user
+            service_name = "Auto.dev" if service == "AutoDev" else service
+            await query.message.reply_text(
+                f"✅ API key for {service_name} has been removed."
+            )
+    
+    elif data == "service_info":
+        # Show service information
+        text = (
+            "ℹ️ **Service Information**\n\n"
+            "**NHTSA (National Highway Traffic Safety Administration)**\n"
+            "• Free service provided by the U.S. government\n"
+            "• Basic vehicle information\n"
+            "• No API key required\n"
+            "• Data includes make, model, year, body type, etc.\n\n"
+            "**Auto.dev**\n"
+            "• Premium service with detailed vehicle data\n"
+            "• Requires a paid API key\n"
+            "• More comprehensive information including features, options, market value, etc.\n"
+            "• Visit auto.dev to get an API key\n\n"
+            "You can switch between services at any time in settings."
+        )
+        
+        from .keyboards import get_service_info_keyboard
+        keyboard = get_service_info_keyboard()
+        
+        await query.message.edit_text(
+            text,
+            parse_mode=ParseMode.MARKDOWN,
+            reply_markup=keyboard
+        )
 
 
 async def show_vehicle_section(query: CallbackQuery, context: ContextTypes.DEFAULT_TYPE, section: str, vin: str) -> None:
@@ -716,6 +1070,7 @@ async def setup_application():
     application.add_handler(CommandHandler("vin", cmd_vin))
     application.add_handler(CommandHandler("recent", cmd_recent))
     application.add_handler(CommandHandler("saved", cmd_saved))
+    application.add_handler(CommandHandler("settings", cmd_settings))
     
     # Register callback query handler
     application.add_handler(CallbackQueryHandler(handle_callback_query))
@@ -786,6 +1141,7 @@ def run() -> None:
     application.add_handler(CommandHandler("vin", cmd_vin))
     application.add_handler(CommandHandler("recent", cmd_recent))
     application.add_handler(CommandHandler("saved", cmd_saved))
+    application.add_handler(CommandHandler("settings", cmd_settings))
     
     # Register callback query handler
     application.add_handler(CallbackQueryHandler(handle_callback_query))
