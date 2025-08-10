@@ -304,8 +304,8 @@ async def get_user_decoder(context: ContextTypes.DEFAULT_TYPE, user_id: int) -> 
     return context.bot_data["nhtsa_client"]
 
 
-async def handle_vin_decode(update: Update, context: ContextTypes.DEFAULT_TYPE, vin: str, from_callback: bool = False) -> None:
-    """Handle VIN decoding with new UX improvements"""
+async def handle_vin_decode(update: Update, context: ContextTypes.DEFAULT_TYPE, vin: str, from_callback: bool = False, requested_level: Optional[str] = None) -> None:
+    """Handle VIN decoding with smart progressive disclosure"""
     
     # Validate VIN
     if not is_valid_vin(vin):
@@ -326,6 +326,7 @@ async def handle_vin_decode(update: Update, context: ContextTypes.DEFAULT_TYPE, 
     # Get bot components
     settings = context.bot_data.get("settings")
     user_data_mgr: UserDataManager = context.bot_data.get("user_data_manager")
+    user_context_mgr = context.bot_data.get("user_context_manager")
     user_id = update.effective_user.id if update.effective_user else None
     
     # Get the appropriate decoder based on user settings
@@ -380,42 +381,109 @@ async def handle_vin_decode(update: Update, context: ContextTypes.DEFAULT_TYPE, 
     # Store the data temporarily for section display
     context.user_data[f"vehicle_data_{vin}"] = data
     
+    # Add from_cache flag to data
+    if from_cache:
+        data["from_cache"] = True
+    
     # Add to user history
-    user_id = update.effective_user.id if update.effective_user else None
     if user_data_mgr and user_id:
         await user_data_mgr.add_to_history(user_id, vin, data)
 
     try:
-        # Format the comprehensive summary view
-        summary_text = format_vehicle_summary(data)
+        # Import smart formatting components
+        from .smart_formatter import (
+            format_vehicle_smart_card, 
+            InformationLevel, 
+            DisplayMode,
+            suggest_information_level
+        )
+        from .smart_keyboards import get_adaptive_keyboard
+        from .user_context import UserContextManager
         
-        # Check what additional data is available
-        has_history = "history" in data and data["history"]
-        has_marketvalue = "marketvalue" in data and data["marketvalue"]
+        # Get or create user context manager
+        if not user_context_mgr and user_id:
+            user_context_mgr = UserContextManager(cache=context.bot_data.get("cache"))
+            context.bot_data["user_context_manager"] = user_context_mgr
         
-        # Create inline keyboard with available options
-        details_keyboard = get_details_keyboard(vin, has_history=has_history, has_marketvalue=has_marketvalue)
+        # Determine information level to display
+        if requested_level:
+            # User explicitly requested a level
+            try:
+                display_level = InformationLevel(int(requested_level))
+            except (ValueError, TypeError):
+                display_level = InformationLevel.STANDARD
+        else:
+            # Use smart suggestion
+            if user_context_mgr and user_id:
+                data_richness = await user_context_mgr.calculate_data_richness(data)
+                display_level = await user_context_mgr.suggest_optimal_level(user_id, data_richness)
+            else:
+                display_level = suggest_information_level(data)
         
-        # Send the summary with inline keyboard
+        # Detect mobile user
+        is_mobile = False
+        if user_context_mgr and user_id:
+            is_mobile = await user_context_mgr.detect_mobile_user(user_id, context)
+        
+        # Get user context for adaptive keyboard
+        user_context = {}
+        if user_context_mgr and user_id:
+            user_context = await user_context_mgr.get_user_context_dict(user_id)
+        
+        # Format the smart summary
+        display_mode = DisplayMode.MOBILE if is_mobile else DisplayMode.DESKTOP
+        summary_text = format_vehicle_smart_card(data, display_level, display_mode)
+        
+        # Create adaptive keyboard
+        keyboard = get_adaptive_keyboard(vin, data, display_level, user_context)
+        
+        # Send the summary with smart keyboard
         if from_callback:
             message = await update.callback_query.message.reply_text(
                 summary_text,
                 parse_mode=ParseMode.MARKDOWN,
-                reply_markup=details_keyboard
+                reply_markup=keyboard
             )
         else:
             message = await update.message.reply_text(
                 summary_text,
                 parse_mode=ParseMode.MARKDOWN,
-                reply_markup=details_keyboard
+                reply_markup=keyboard
             )
         
-        logger.info(f"Successfully sent VIN decode card for {vin}")
+        # Track the search for user learning
+        if user_context_mgr and user_id:
+            await user_context_mgr.track_vin_search(user_id, vin, display_level, is_mobile)
+        
+        logger.info(f"Successfully sent smart VIN decode card for {vin} at level {display_level.name}")
         
     except Exception as e:
-        logger.exception(f"Error formatting/sending response for VIN {vin}")
-        # Fallback to simple format
+        logger.exception(f"Error in smart formatting for VIN {vin}, falling back to original")
+        # Fallback to original formatting
         try:
+            from .formatter import format_vehicle_summary
+            from .keyboards import get_details_keyboard
+            
+            summary_text = format_vehicle_summary(data)
+            has_history = "history" in data and data["history"]
+            has_marketvalue = "marketvalue" in data and data["marketvalue"]
+            details_keyboard = get_details_keyboard(vin, has_history=has_history, has_marketvalue=has_marketvalue)
+            
+            if from_callback:
+                message = await update.callback_query.message.reply_text(
+                    summary_text,
+                    parse_mode=ParseMode.MARKDOWN,
+                    reply_markup=details_keyboard
+                )
+            else:
+                message = await update.message.reply_text(
+                    summary_text,
+                    parse_mode=ParseMode.MARKDOWN,
+                    reply_markup=details_keyboard
+                )
+        except Exception as fallback_error:
+            logger.exception(f"Even fallback formatting failed for VIN {vin}")
+            # Last resort - basic info
             basic_info = "✅ VIN decoded successfully\n\n"
             if isinstance(data, dict) and "attributes" in data:
                 attrs = data["attributes"]
@@ -430,12 +498,6 @@ async def handle_vin_decode(update: Update, context: ContextTypes.DEFAULT_TYPE, 
                 await update.callback_query.message.reply_text(basic_info)
             else:
                 await update.message.reply_text(basic_info)
-        except:
-            error_msg = "✅ VIN decoded but had trouble formatting the response."
-            if from_callback:
-                await update.callback_query.message.reply_text(error_msg)
-            else:
-                await update.message.reply_text(error_msg)
 
 
 async def cmd_recent(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -522,6 +584,32 @@ async def handle_callback_query(update: Update, context: ContextTypes.DEFAULT_TY
         vin = data.replace("decode_vin:", "")
         await handle_vin_decode(update, context, vin, from_callback=True)
     
+    elif data.startswith("show_level:"):
+        # Handle information level selection
+        parts = data.split(":")
+        if len(parts) >= 3:
+            level = parts[1]
+            vin = parts[2]
+            
+            # Track level change for user learning
+            user_context_mgr = context.bot_data.get("user_context_manager")
+            if user_context_mgr and user_id:
+                # Get current level from context or assume STANDARD
+                current_level_value = context.user_data.get(f"current_level_{vin}", 2)  # Default to STANDARD
+                try:
+                    from .smart_formatter import InformationLevel
+                    current_level = InformationLevel(current_level_value)
+                    new_level = InformationLevel(int(level))
+                    await user_context_mgr.track_level_change(user_id, current_level, new_level)
+                    
+                    # Store new level in context
+                    context.user_data[f"current_level_{vin}"] = int(level)
+                except (ValueError, TypeError):
+                    pass
+            
+            # Re-decode with specific level
+            await handle_vin_decode(update, context, vin, from_callback=True, requested_level=level)
+    
     elif data.startswith("save_vin:"):
         # Save a VIN to favorites
         parts = data.split(":")
@@ -567,6 +655,12 @@ async def handle_callback_query(update: Update, context: ContextTypes.DEFAULT_TY
     elif data.startswith("share_vin:"):
         # Handle share VIN functionality
         vin = data.replace("share_vin:", "")
+        
+        # Track action for user learning
+        user_context_mgr = context.bot_data.get("user_context_manager")
+        if user_context_mgr and user_id:
+            await user_context_mgr.track_action(user_id, "share_vin")
+        
         await query.message.reply_text(
             f"📤 **Share this VIN:**\n\n"
             f"`{vin}`\n\n"
@@ -577,6 +671,12 @@ async def handle_callback_query(update: Update, context: ContextTypes.DEFAULT_TY
     elif data.startswith("compare_start:"):
         # Handle comparison functionality
         vin = data.replace("compare_start:", "")
+        
+        # Track action for user learning
+        user_context_mgr = context.bot_data.get("user_context_manager")
+        if user_context_mgr and user_id:
+            await user_context_mgr.track_action(user_id, "compare_start")
+        
         await query.message.reply_text(
             f"📊 **VIN Comparison**\n\n"
             f"First VIN: `{vin}`\n\n"
