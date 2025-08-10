@@ -22,8 +22,6 @@ def load_settings() -> Settings:
         pass
 
     token = os.getenv("TELEGRAM_BOT_TOKEN", "").strip()
-    # CarsXE removed
-    key = ""
     timeout = int(os.getenv("HTTP_TIMEOUT_SECONDS", "15") or 15)
     log_level = os.getenv("LOG_LEVEL", "INFO").upper()
     redis_url = os.getenv("REDIS_URL", "").strip()  # deprecated; unused when Upstash is configured
@@ -40,7 +38,6 @@ def load_settings() -> Settings:
 
     return Settings(
         telegram_bot_token=token,
-        carsxe_api_key=key,
         http_timeout_seconds=timeout,
         log_level=log_level,
         redis_url=redis_url,
