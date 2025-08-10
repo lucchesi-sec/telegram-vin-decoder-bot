@@ -6,11 +6,12 @@ from dataclasses import dataclass
 @dataclass
 class Settings:
     telegram_bot_token: str
-    carsxe_api_key: str
     http_timeout_seconds: int = 15
     log_level: str = "INFO"
     redis_url: str = ""
     redis_ttl_seconds: int = 86400  # 24 hours default
+    # Legacy field for compatibility, not required
+    carsxe_api_key: str = ""
 
 
 def load_settings() -> Settings:
@@ -23,6 +24,7 @@ def load_settings() -> Settings:
         pass
 
     token = os.getenv("TELEGRAM_BOT_TOKEN", "").strip()
+    # CarsXE API key is optional now - we use NHTSA by default
     key = os.getenv("CARSXE_API_KEY", "").strip()
     timeout = int(os.getenv("HTTP_TIMEOUT_SECONDS", "15") or 15)
     log_level = os.getenv("LOG_LEVEL", "INFO").upper()
@@ -31,8 +33,6 @@ def load_settings() -> Settings:
 
     if not token:
         raise RuntimeError("TELEGRAM_BOT_TOKEN is required (set in .env)")
-    if not key:
-        raise RuntimeError("CARSXE_API_KEY is required (set in .env)")
 
     # Apply logging level early
     logging.basicConfig(

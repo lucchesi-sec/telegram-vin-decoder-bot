@@ -315,9 +315,10 @@ class UserDataManager:
         """
         if not self.cache:
             return {
-                "service": "CarsXE",  # Default service
+                "service": "NHTSA",  # Default service changed to NHTSA
                 "carsxe_api_key": None,
-                "nhtsa_api_key": None  # NHTSA doesn't need a key but keeping for consistency
+                "nhtsa_api_key": None,  # NHTSA doesn't need a key but keeping for consistency
+                "autodev_api_key": None
             }
         
         try:
@@ -333,21 +334,25 @@ class UserDataManager:
                     settings["carsxe_api_key"] = None
                 if "nhtsa_api_key" not in settings:
                     settings["nhtsa_api_key"] = None
+                if "autodev_api_key" not in settings:
+                    settings["autodev_api_key"] = None
                 return settings
             
             # Return defaults if no settings exist
             return {
-                "service": "CarsXE",
+                "service": "NHTSA",
                 "carsxe_api_key": None,
-                "nhtsa_api_key": None
+                "nhtsa_api_key": None,
+                "autodev_api_key": None
             }
             
         except Exception as e:
             logger.error(f"Error getting user settings: {e}")
             return {
-                "service": "CarsXE",
+                "service": "NHTSA",
                 "carsxe_api_key": None,
-                "nhtsa_api_key": None
+                "nhtsa_api_key": None,
+                "autodev_api_key": None
             }
     
     async def set_user_service(self, user_id: int, service: str) -> bool:
@@ -405,6 +410,8 @@ class UserDataManager:
                 settings["carsxe_api_key"] = api_key
             elif service.lower() == "nhtsa":
                 settings["nhtsa_api_key"] = api_key  # NHTSA doesn't need key but keeping for consistency
+            elif service.lower() == "autodev":
+                settings["autodev_api_key"] = api_key
             else:
                 logger.error(f"Unknown service: {service}")
                 return False
