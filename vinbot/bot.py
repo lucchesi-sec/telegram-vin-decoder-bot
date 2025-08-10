@@ -99,19 +99,22 @@ async def cmd_settings(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     # Get user settings
     settings = await user_data_mgr.get_user_settings(user_id)
     current_service = settings.get("service", "NHTSA")
+    has_carsxe_key = bool(settings.get("carsxe_api_key"))
     has_autodev_key = bool(settings.get("autodev_api_key"))
     
     # Create settings keyboard
     from .keyboards import get_settings_keyboard
     keyboard = get_settings_keyboard(
         current_service=current_service,
+        has_carsxe_key=has_carsxe_key,
         has_autodev_key=has_autodev_key
     )
     
     # Service descriptions
     service_desc = {
         "NHTSA": "✅ Using NHTSA (Free, no API key required)",
-        "AutoDev": "🔄 Using Auto.dev (Requires API key)"
+        "AutoDev": "🔄 Using Auto.dev (Requires API key)",
+        "CarsXE": "🔄 Using CarsXE (Requires API key)"
     }
     
     current_desc = service_desc.get(current_service, "NHTSA (Free)")
@@ -219,28 +222,31 @@ async def show_settings_menu(update: Update, context: ContextTypes.DEFAULT_TYPE)
     # Get user settings
     settings = await user_data_mgr.get_user_settings(user_id)
     current_service = settings.get("service", "NHTSA")
+    has_carsxe_key = bool(settings.get("carsxe_api_key"))
     has_autodev_key = bool(settings.get("autodev_api_key"))
     
     # Create settings keyboard
     from .keyboards import get_settings_keyboard
     keyboard = get_settings_keyboard(
         current_service=current_service,
+        has_carsxe_key=has_carsxe_key,
         has_autodev_key=has_autodev_key
     )
     
     # Service descriptions
     service_desc = {
         "NHTSA": "✅ Using NHTSA (Free, no API key required)",
-        "AutoDev": "🔄 Using Auto.dev (Requires API key)"
+        "AutoDev": "🔄 Using Auto.dev (Requires API key)",
+        "CarsXE": "🔄 Using CarsXE (Requires API key)"
     }
     
     current_desc = service_desc.get(current_service, "NHTSA (Free)")
     
     text = (
-        "⚙️ **Settings**\\n\\n"
-        f"**Current Service:** {current_desc}\\n\\n"
+        "⚙️ **Settings**\n\n"
+        f"**Current Service:** {current_desc}\n\n"
         "Select a service below to change your preference. "
-        "Auto.dev provides more detailed vehicle information but requires an API key.\\n\\n"
+        "Auto.dev provides more detailed vehicle information but requires an API key.\n\n"
         "NHTSA is completely free and provides basic vehicle information."
     )
     
@@ -620,17 +626,20 @@ async def handle_callback_query(update: Update, context: ContextTypes.DEFAULT_TY
         if user_data_mgr and user_id:
             settings = await user_data_mgr.get_user_settings(user_id)
             current_service = settings.get("service", "NHTSA")
+            has_carsxe_key = bool(settings.get("carsxe_api_key"))
             has_autodev_key = bool(settings.get("autodev_api_key"))
             
             from .keyboards import get_settings_keyboard
             keyboard = get_settings_keyboard(
                 current_service=current_service,
+                has_carsxe_key=has_carsxe_key,
                 has_autodev_key=has_autodev_key
             )
             
             service_desc = {
                 "NHTSA": "✅ Using NHTSA (Free, no API key required)",
-                "AutoDev": "🔄 Using Auto.dev (Requires API key)"
+                "AutoDev": "🔄 Using Auto.dev (Requires API key)",
+                "CarsXE": "🔄 Using CarsXE (Requires API key)"
             }
             
             current_desc = service_desc.get(current_service, "NHTSA (Free)")
@@ -662,17 +671,20 @@ async def handle_callback_query(update: Update, context: ContextTypes.DEFAULT_TY
             # Get updated settings
             settings = await user_data_mgr.get_user_settings(user_id)
             current_service = settings.get("service", "NHTSA")
+            has_carsxe_key = bool(settings.get("carsxe_api_key"))
             has_autodev_key = bool(settings.get("autodev_api_key"))
             
             from .keyboards import get_settings_keyboard
             keyboard = get_settings_keyboard(
                 current_service=current_service,
+                has_carsxe_key=has_carsxe_key,
                 has_autodev_key=has_autodev_key
             )
             
             service_desc = {
                 "NHTSA": "✅ Using NHTSA (Free, no API key required)",
-                "AutoDev": "🔄 Using Auto.dev (Requires API key)"
+                "AutoDev": "🔄 Using Auto.dev (Requires API key)",
+                "CarsXE": "🔄 Using CarsXE (Requires API key)"
             }
             
             current_desc = service_desc.get(current_service, "NHTSA (Free)")
@@ -690,6 +702,15 @@ async def handle_callback_query(update: Update, context: ContextTypes.DEFAULT_TY
                 parse_mode=ParseMode.MARKDOWN,
                 reply_markup=keyboard
             )
+            
+            # If switching to AutoDev and no API key is set, prompt for one
+            if service == "AutoDev" and not has_autodev_key:
+                await query.message.reply_text(
+                    "🔑 **Auto.dev API Key Required**\n\n"
+                    "To use Auto.dev, please add your API key.\n"
+                    "Click the '🔑 Add API Key' button below, or use the /settings command again after obtaining your key.",
+                    parse_mode=ParseMode.MARKDOWN
+                )
     
     elif data.startswith("add_api_key:") or data.startswith("update_api_key:"):
         # Prompt user to enter API key
@@ -726,17 +747,20 @@ async def handle_callback_query(update: Update, context: ContextTypes.DEFAULT_TY
             # Show updated settings
             updated_settings = await user_data_mgr.get_user_settings(user_id)
             current_service = updated_settings.get("service", "NHTSA")
+            has_carsxe_key = bool(updated_settings.get("carsxe_api_key"))
             has_autodev_key = bool(updated_settings.get("autodev_api_key"))
             
             from .keyboards import get_settings_keyboard
             keyboard = get_settings_keyboard(
                 current_service=current_service,
+                has_carsxe_key=has_carsxe_key,
                 has_autodev_key=has_autodev_key
             )
             
             service_desc = {
                 "NHTSA": "✅ Using NHTSA (Free, no API key required)",
-                "AutoDev": "🔄 Using Auto.dev (Requires API key)"
+                "AutoDev": "🔄 Using Auto.dev (Requires API key)",
+                "CarsXE": "🔄 Using CarsXE (Requires API key)"
             }
             
             current_desc = service_desc.get(current_service, "NHTSA (Free)")
@@ -756,7 +780,7 @@ async def handle_callback_query(update: Update, context: ContextTypes.DEFAULT_TY
             )
             
             # Notify user
-            service_name = "Auto.dev" if service == "AutoDev" else service
+            service_name = "Auto.dev" if service == "AutoDev" else ("CarsXE" if service == "CarsXE" else service)
             await query.message.reply_text(
                 f"✅ API key for {service_name} has been removed."
             )
