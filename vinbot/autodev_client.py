@@ -105,57 +105,85 @@ class AutoDevClient(VINDecoderBase):
         # Note: Auto.dev response structure may vary, adjust mappings as needed
         if isinstance(data, dict):
             # Basic vehicle information
-            vehicle_info["vin"] = data.get("vin", "")
-            vehicle_info["year"] = data.get("year") or data.get("model_year")
-            vehicle_info["make"] = data.get("make") or data.get("manufacturer")
-            vehicle_info["model"] = data.get("model")
-            vehicle_info["trim"] = data.get("trim") or data.get("trim_level")
-            vehicle_info["body_type"] = data.get("body_type") or data.get("body_class")
-            vehicle_info["vehicle_type"] = data.get("vehicle_type") or data.get("type")
+            if isinstance(data.get("make"), dict):
+                vehicle_info["make"] = data["make"].get("name", "")
+            else:
+                vehicle_info["make"] = data.get("make", "")
+                
+            if isinstance(data.get("model"), dict):
+                vehicle_info["model"] = data["model"].get("name", "")
+            else:
+                vehicle_info["model"] = data.get("model", "")
+                
+            vehicle_info["year"] = None
+            if "years" in data and isinstance(data["years"], list) and len(data["years"]) > 0:
+                vehicle_info["year"] = data["years"][0].get("year")
             
-            # Engine and drivetrain
-            vehicle_info["engine"] = data.get("engine") or data.get("engine_description")
-            vehicle_info["cylinders"] = data.get("cylinders") or data.get("engine_cylinders")
-            vehicle_info["displacement"] = data.get("displacement") or data.get("engine_displacement")
-            vehicle_info["fuel_type"] = data.get("fuel_type") or data.get("fuel")
-            vehicle_info["transmission"] = data.get("transmission") or data.get("transmission_type")
-            vehicle_info["drive_type"] = data.get("drivetrain") or data.get("drive_type")
+            # Engine information
+            if "engine" in data and isinstance(data["engine"], dict):
+                engine = data["engine"]
+                vehicle_info["engine"] = engine.get("name", "")
+                vehicle_info["cylinders"] = engine.get("cylinder")
+                vehicle_info["displacement"] = engine.get("size")
+                vehicle_info["fuel_type"] = engine.get("fuelType")
+                vehicle_info["horsepower"] = engine.get("horsepower")
+                vehicle_info["torque"] = engine.get("torque")
+                vehicle_info["configuration"] = engine.get("configuration")
+                vehicle_info["compressor_type"] = engine.get("compressorType")
             
-            # Dimensions and weight
-            vehicle_info["doors"] = data.get("doors") or data.get("door_count")
-            vehicle_info["seats"] = data.get("seats") or data.get("seating_capacity")
-            vehicle_info["weight"] = data.get("curb_weight") or data.get("weight")
-            vehicle_info["wheelbase"] = data.get("wheelbase")
-            vehicle_info["length"] = data.get("length")
-            vehicle_info["width"] = data.get("width")
-            vehicle_info["height"] = data.get("height")
+            # Transmission information
+            if "transmission" in data and isinstance(data["transmission"], dict):
+                transmission = data["transmission"]
+                vehicle_info["transmission"] = transmission.get("name", "")
+                vehicle_info["transmission_type"] = transmission.get("transmissionType")
+                vehicle_info["number_of_speeds"] = transmission.get("numberOfSpeeds")
+                vehicle_info["automatic_type"] = transmission.get("automaticType")
             
-            # Manufacturing
-            vehicle_info["country"] = data.get("country") or data.get("made_in")
-            vehicle_info["manufacturer"] = data.get("manufacturer") or data.get("make")
-            vehicle_info["plant"] = data.get("plant") or data.get("factory")
+            # Body and drive information
+            vehicle_info["drive_type"] = data.get("drivenWheels")
+            vehicle_info["doors"] = data.get("numOfDoors")
             
-            # Additional data
-            vehicle_info["msrp"] = data.get("msrp") or data.get("base_price")
-            vehicle_info["mpg_city"] = data.get("mpg_city") or data.get("city_mpg")
-            vehicle_info["mpg_highway"] = data.get("mpg_highway") or data.get("highway_mpg")
+            if "categories" in data and isinstance(data["categories"], dict):
+                categories = data["categories"]
+                vehicle_info["body_type"] = categories.get("primaryBodyType")
+                vehicle_info["vehicle_style"] = categories.get("vehicleStyle")
+                vehicle_info["vehicle_size"] = categories.get("vehicleSize")
+                vehicle_info["epa_class"] = categories.get("epaClass")
             
-            # Features and options (if available)
-            if "features" in data:
-                vehicle_info["features"] = data["features"]
-            if "standard_equipment" in data:
-                vehicle_info["standard_equipment"] = data["standard_equipment"]
-            if "optional_equipment" in data:
-                vehicle_info["optional_equipment"] = data["optional_equipment"]
+            # Fuel economy
+            if "mpg" in data and isinstance(data["mpg"], dict):
+                mpg = data["mpg"]
+                vehicle_info["mpg_city"] = mpg.get("city")
+                vehicle_info["mpg_highway"] = mpg.get("highway")
             
-            # Market data (if available)
-            if "market_value" in data or "pricing" in data:
-                vehicle_info["market_value"] = data.get("market_value") or data.get("pricing")
+            # Trim information
+            if "years" in data and isinstance(data["years"], list) and len(data["years"]) > 0:
+                year_info = data["years"][0]
+                if "styles" in year_info and isinstance(year_info["styles"], list) and len(year_info["styles"]) > 0:
+                    style = year_info["styles"][0]
+                    vehicle_info["trim"] = style.get("trim")
             
-            # History (if available)
-            if "history" in data or "recalls" in data:
-                vehicle_info["history"] = data.get("history")
-                vehicle_info["recalls"] = data.get("recalls")
+            # Extract options as features
+            if "options" in data and isinstance(data["options"], list):
+                features = []
+                for category in data["options"]:
+                    if isinstance(category, dict) and "options" in category:
+                        for option in category["options"]:
+                            if isinstance(option, dict) and "name" in option:
+                                features.append(option["name"])
+                if features:
+                    vehicle_info["features"] = features
+            
+            # Extract colors
+            if "colors" in data and isinstance(data["colors"], list):
+                colors = []
+                for category in data["colors"]:
+                    if isinstance(category, dict) and "options" in category:
+                        for color in category["options"]:
+                            if isinstance(color, dict) and "name" in color:
+                                colors.append(color["name"])
+                if colors:
+                    vehicle_info["colors"] = colors
         
         # Remove None values
         vehicle_info = {k: v for k, v in vehicle_info.items() if v is not None}

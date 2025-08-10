@@ -8,8 +8,14 @@ def format_market_value(data: Dict[str, Any]) -> str:
     """Format market value information"""
     marketvalue = data.get("marketvalue", {})
     
+    # Check if this is Auto.dev data
+    is_autodev = data.get("service") == "AutoDev"
+    
     if not marketvalue:
-        return "💰 **MARKET VALUE**\n\nNo market value data available for this vehicle."
+        if is_autodev:
+            return "💰 **MARKET VALUE**\n\nMarket value data not available for Auto.dev."
+        else:
+            return "💰 **MARKET VALUE**\n\nNo market value data available for this vehicle."
     
     lines = ["💰 **MARKET VALUE**", "=" * 30, ""]
     
@@ -81,8 +87,14 @@ def format_history(data: Dict[str, Any]) -> str:
     """Format vehicle history information"""
     history = data.get("history", {})
     
+    # Check if this is Auto.dev data
+    is_autodev = data.get("service") == "AutoDev"
+    
     if not history:
-        return "📜 **VEHICLE HISTORY**\n\nNo history data available for this vehicle."
+        if is_autodev:
+            return "📜 **VEHICLE HISTORY**\n\nHistory data not available for Auto.dev."
+        else:
+            return "📜 **VEHICLE HISTORY**\n\nNo history data available for this vehicle."
     
     lines = ["📜 **VEHICLE HISTORY**", "=" * 30, ""]
     

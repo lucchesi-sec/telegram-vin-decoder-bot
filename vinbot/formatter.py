@@ -49,6 +49,13 @@ def format_vehicle_summary(data: Dict[str, Any]) -> str:
     if not attrs:
         return "Could not parse vehicle data from response."
     
+    # Check if this is Auto.dev data by looking for specific fields
+    is_autodev = data.get("service") == "AutoDev"
+    
+    if is_autodev:
+        return _format_autodev_summary(data)
+    
+    # Original formatting for CarsXE/NHTSA data
     lines: List[str] = []
     
     # VIN and Basic Info
@@ -210,6 +217,110 @@ def format_vehicle_summary(data: Dict[str, Any]) -> str:
     return "\n".join(lines)
 
 
+def _format_autodev_summary(data: Dict[str, Any]) -> str:
+    """Format vehicle information specifically for Auto.dev data"""
+    attrs = data.get("attributes", {})
+    
+    if not attrs:
+        return "Could not parse vehicle data from response."
+    
+    lines = []
+    
+    # Header with vehicle information
+    year = attrs.get("year", "")
+    make = attrs.get("make", "")
+    model = attrs.get("model", "")
+    trim = attrs.get("trim", "")
+    
+    vehicle_desc = " ".join(str(v) for v in [year, make, model, trim] if v)
+    lines.append(f"🚗 **{vehicle_desc}**")
+    lines.append("=" * min(len(vehicle_desc) + 2, 50))
+    
+    # Engine Information
+    lines.append("\n🔧 **ENGINE SPECIFICATIONS**")
+    lines.append("-" * 25)
+    
+    engine_fields = [
+        ("Engine", attrs.get("engine")),
+        ("Configuration", attrs.get("configuration")),
+        ("Cylinders", attrs.get("cylinders")),
+        ("Displacement", f"{attrs.get('displacement')}L" if attrs.get("displacement") else None),
+        ("Fuel Type", attrs.get("fuel_type")),
+        ("Horsepower", f"{attrs.get('horsepower')} hp" if attrs.get("horsepower") else None),
+        ("Torque", f"{attrs.get('torque')} lb-ft" if attrs.get("torque") else None),
+        ("Compressor", attrs.get("compressor_type")),
+    ]
+    
+    for label, value in engine_fields:
+        if value:
+            lines.append(f"**{label}:** {value}")
+    
+    # Transmission Information
+    lines.append("\n⚙️ **TRANSMISSION**")
+    lines.append("-" * 18)
+    
+    transmission_fields = [
+        ("Type", attrs.get("transmission_type")),
+        ("Name", attrs.get("transmission")),
+        ("Speeds", attrs.get("number_of_speeds")),
+        ("Automatic Type", attrs.get("automatic_type")),
+    ]
+    
+    for label, value in transmission_fields:
+        if value:
+            lines.append(f"**{label}:** {value}")
+    
+    # Body and Drive Information
+    lines.append("\n🚚 **BODY & DRIVE**")
+    lines.append("-" * 17)
+    
+    body_fields = [
+        ("Body Type", attrs.get("body_type")),
+        ("Vehicle Style", attrs.get("vehicle_style")),
+        ("Drive Type", attrs.get("drive_type")),
+        ("Doors", attrs.get("doors")),
+        ("Vehicle Size", attrs.get("vehicle_size")),
+        ("EPA Class", attrs.get("epa_class")),
+    ]
+    
+    for label, value in body_fields:
+        if value:
+            lines.append(f"**{label}:** {value}")
+    
+    # Fuel Economy
+    mpg_city = attrs.get("mpg_city")
+    mpg_highway = attrs.get("mpg_highway")
+    if mpg_city or mpg_highway:
+        lines.append("\n⛽ **FUEL ECONOMY**")
+        lines.append("-" * 18)
+        if mpg_city:
+            lines.append(f"**City:** {mpg_city} MPG")
+        if mpg_highway:
+            lines.append(f"**Highway:** {mpg_highway} MPG")
+    
+    # Features (limit to first 10 for readability)
+    features = attrs.get("features", [])
+    if features:
+        lines.append("\n✨ **FEATURES** (Sample)")
+        lines.append("-" * 22)
+        for feature in features[:10]:  # Limit to first 10
+            lines.append(f"• {feature}")
+        if len(features) > 10:
+            lines.append(f"... and {len(features) - 10} more features")
+    
+    # Colors (limit to first 5 for readability)
+    colors = attrs.get("colors", [])
+    if colors:
+        lines.append("\n🎨 **AVAILABLE COLORS** (Sample)")
+        lines.append("-" * 30)
+        for color in colors[:5]:  # Limit to first 5
+            lines.append(f"• {color}")
+        if len(colors) > 5:
+            lines.append(f"... and {len(colors) - 5} more colors")
+    
+    return "\n".join(lines)
+
+
 def format_vehicle_card(data: Dict[str, Any], from_cache: bool = False) -> str:
     """Format a concise vehicle card summary - the initial view users see"""
     
@@ -222,6 +333,9 @@ def format_vehicle_card(data: Dict[str, Any], from_cache: bool = False) -> str:
     if not attrs:
         return "Could not parse vehicle data from response."
     
+    # Check if this is Auto.dev data
+    is_autodev = data.get("service") == "AutoDev"
+    
     # Get basic info
     vin = attrs.get("vin", "Unknown")
     year = attrs.get("year", "")
@@ -230,6 +344,12 @@ def format_vehicle_card(data: Dict[str, Any], from_cache: bool = False) -> str:
     body = attrs.get("body", "")
     fuel = attrs.get("fuel_type", "")
     drive = attrs.get("drive", "")
+    
+    # For Auto.dev, use different fields
+    if is_autodev:
+        body = attrs.get("body_type", "")
+        fuel = attrs.get("fuel_type", "")
+        drive = attrs.get("drive_type", "")
     
     # Get vehicle icon
     icon = _get_vehicle_icon(body)
@@ -271,6 +391,9 @@ def format_vehicle_card(data: Dict[str, Any], from_cache: bool = False) -> str:
     
     # Transmission info
     gears = attrs.get("gears", "")
+    # For Auto.dev, use transmission field
+    if is_autodev:
+        gears = attrs.get("transmission", "")
     if gears:
         lines.append(f"⚙️ {gears}")
     
@@ -283,6 +406,14 @@ def format_vehicle_card(data: Dict[str, Any], from_cache: bool = False) -> str:
         ("Series", attrs.get("series")),
         ("Product Type", attrs.get("product_type")),
     ]
+    
+    # For Auto.dev, use different fields
+    if is_autodev:
+        specs_fields = [
+            ("Trim", attrs.get("trim")),
+            ("Engine", attrs.get("engine")),
+            ("Cylinders", attrs.get("cylinders")),
+        ]
     
     for label, value in specs_fields:
         if value:
@@ -299,14 +430,22 @@ def format_vehicle_card(data: Dict[str, Any], from_cache: bool = False) -> str:
         ("Wheelbase", attrs.get("wheelbase_mm"), "mm"),
     ]
     
+    # For Auto.dev, we don't have these fields, so skip this section
+    
     for label, value, unit in dimension_fields:
-        if value:
+        if value and not is_autodev:  # Skip for Auto.dev since we don't have these fields
             lines.append(f"**{label}:** {_format_value(value)} {unit}")
+    
+    # Add a note for Auto.dev that dimensions are not available
+    if is_autodev:
+        lines.append("_Dimensions not available for Auto.dev data_")
     
     # Weight
     weight_empty = attrs.get("weight_empty_kg")
-    if weight_empty:
+    if weight_empty and not is_autodev:  # Skip for Auto.dev
         lines.append(f"**Empty Weight:** {_format_value(weight_empty)} kg")
+    elif is_autodev:
+        lines.append("_Weight not available for Auto.dev data_")
     
     # Performance
     lines.append("\n🏁 **PERFORMANCE**")
@@ -317,9 +456,18 @@ def format_vehicle_card(data: Dict[str, Any], from_cache: bool = False) -> str:
         ("CO2 Emission", attrs.get("avg_co2_emission_g_km"), "g/km"),
     ]
     
-    for label, value, unit in performance_fields:
-        if value:
-            lines.append(f"**{label}:** {_format_value(value)} {unit}")
+    # For Auto.dev, use MPG instead
+    if is_autodev:
+        mpg_city = attrs.get("mpg_city")
+        mpg_highway = attrs.get("mpg_highway")
+        if mpg_city:
+            lines.append(f"**City MPG:** {mpg_city}")
+        if mpg_highway:
+            lines.append(f"**Highway MPG:** {mpg_highway}")
+    else:
+        for label, value, unit in performance_fields:
+            if value:
+                lines.append(f"**{label}:** {_format_value(value)} {unit}")
     
     # Features
     lines.append("\n🔧 **FEATURES**")
@@ -330,6 +478,12 @@ def format_vehicle_card(data: Dict[str, Any], from_cache: bool = False) -> str:
         ("Seats", attrs.get("no_of_seats")),
         ("ABS", attrs.get("abs")),
     ]
+    
+    # For Auto.dev, use doors field
+    if is_autodev:
+        feature_fields = [
+            ("Doors", attrs.get("doors")),
+        ]
     
     for label, value in feature_fields:
         if value:
@@ -353,6 +507,35 @@ def format_specs_section(data: Dict[str, Any]) -> str:
     else:
         attrs = data if isinstance(data, dict) else {}
     
+    # Check if this is Auto.dev data
+    is_autodev = data.get("service") == "AutoDev"
+    
+    if is_autodev:
+        lines = ["📋 **SPECIFICATIONS**", "─" * 20]
+        
+        specs_fields = [
+            ("Trim", attrs.get("trim")),
+            ("Engine", attrs.get("engine")),
+            ("Configuration", attrs.get("configuration")),
+            ("Cylinders", attrs.get("cylinders")),
+            ("Displacement", f"{attrs.get('displacement')}L" if attrs.get("displacement") else None),
+            ("Fuel Type", attrs.get("fuel_type")),
+            ("Transmission", attrs.get("transmission")),
+            ("Drive Type", attrs.get("drive_type")),
+        ]
+        
+        has_content = False
+        for label, value in specs_fields:
+            if value:
+                lines.append(f"**{label}:** {_format_value(value)}")
+                has_content = True
+        
+        if not has_content:
+            lines.append("_No specification data available_")
+        
+        return "\n".join(lines)
+    
+    # Original formatting for CarsXE/NHTSA data
     lines = ["📋 **SPECIFICATIONS**", "─" * 20]
     
     specs_fields = [
@@ -386,6 +569,15 @@ def format_manufacturing_section(data: Dict[str, Any]) -> str:
     else:
         attrs = data if isinstance(data, dict) else {}
     
+    # Check if this is Auto.dev data
+    is_autodev = data.get("service") == "AutoDev"
+    
+    if is_autodev:
+        lines = ["🏭 **MANUFACTURING**", "─" * 20]
+        lines.append("_Manufacturing information not available for Auto.dev data_")
+        return "\n".join(lines)
+    
+    # Original formatting for CarsXE/NHTSA data
     lines = ["🏭 **MANUFACTURING**", "─" * 20]
     
     mfg_fields = [
@@ -415,6 +607,15 @@ def format_dimensions_section(data: Dict[str, Any]) -> str:
     else:
         attrs = data if isinstance(data, dict) else {}
     
+    # Check if this is Auto.dev data
+    is_autodev = data.get("service") == "AutoDev"
+    
+    if is_autodev:
+        lines = ["📏 **DIMENSIONS**", "─" * 20]
+        lines.append("_Dimension information not available for Auto.dev data_")
+        return "\n".join(lines)
+    
+    # Original formatting for CarsXE/NHTSA data
     lines = ["📏 **DIMENSIONS**", "─" * 20]
     
     dimension_fields = [
@@ -457,34 +658,54 @@ def format_performance_section(data: Dict[str, Any]) -> str:
     else:
         attrs = data if isinstance(data, dict) else {}
     
+    # Check if this is Auto.dev data
+    is_autodev = data.get("service") == "AutoDev"
+    
     lines = ["🏁 **PERFORMANCE**", "─" * 20]
     
-    performance_fields = [
-        ("Max Speed", attrs.get("max_speed_kmh"), "km/h"),
-        ("CO2 Emission", attrs.get("avg_co2_emission_g_km"), "g/km"),
-    ]
-    
-    has_content = False
-    for label, value, unit in performance_fields:
-        if value:
-            lines.append(f"**{label}:** {_format_value(value)} {unit}")
+    if is_autodev:
+        # For Auto.dev, show MPG information
+        mpg_city = attrs.get("mpg_city")
+        mpg_highway = attrs.get("mpg_highway")
+        
+        has_content = False
+        if mpg_city:
+            lines.append(f"**City MPG:** {mpg_city}")
             has_content = True
-    
-    # Add capacity info here too
-    capacity_fields = [
-        ("Max Roof Load", attrs.get("max_roof_load_kg"), "kg"),
-        ("Max Trailer Load", attrs.get("permitted_trailer_load_without_brakes_kg"), "kg"),
-        ("Min Trunk Capacity", attrs.get("min_trunk_capacity_liters"), "L"),
-        ("Max Trunk Capacity", attrs.get("max_trunk_capacity_liters"), "L"),
-    ]
-    
-    for label, value, unit in capacity_fields:
-        if value:
-            lines.append(f"**{label}:** {_format_value(value)} {unit}")
+        if mpg_highway:
+            lines.append(f"**Highway MPG:** {mpg_highway}")
             has_content = True
-    
-    if not has_content:
-        lines.append("_No performance data available_")
+            
+        if not has_content:
+            lines.append("_No performance data available_")
+    else:
+        # Original formatting for CarsXE/NHTSA data
+        performance_fields = [
+            ("Max Speed", attrs.get("max_speed_kmh"), "km/h"),
+            ("CO2 Emission", attrs.get("avg_co2_emission_g_km"), "g/km"),
+        ]
+        
+        has_content = False
+        for label, value, unit in performance_fields:
+            if value:
+                lines.append(f"**{label}:** {_format_value(value)} {unit}")
+                has_content = True
+        
+        # Add capacity info here too
+        capacity_fields = [
+            ("Max Roof Load", attrs.get("max_roof_load_kg"), "kg"),
+            ("Max Trailer Load", attrs.get("permitted_trailer_load_without_brakes_kg"), "kg"),
+            ("Min Trunk Capacity", attrs.get("min_trunk_capacity_liters"), "L"),
+            ("Max Trunk Capacity", attrs.get("max_trunk_capacity_liters"), "L"),
+        ]
+        
+        for label, value, unit in capacity_fields:
+            if value:
+                lines.append(f"**{label}:** {_format_value(value)} {unit}")
+                has_content = True
+        
+        if not has_content:
+            lines.append("_No performance data available_")
     
     return "\n".join(lines)
 
@@ -497,28 +718,44 @@ def format_features_section(data: Dict[str, Any]) -> str:
     else:
         attrs = data if isinstance(data, dict) else {}
     
+    # Check if this is Auto.dev data
+    is_autodev = data.get("service") == "AutoDev"
+    
     lines = ["🔧 **FEATURES**", "─" * 20]
     
-    feature_fields = [
-        ("Number of Doors", attrs.get("no_of_doors")),
-        ("Number of Seats", attrs.get("no_of_seats")),
-        ("Number of Axles", attrs.get("no_of_axels")),
-        ("Steering Type", attrs.get("steering_type")),
-        ("Front Suspension", attrs.get("front_suspension")),
-        ("Rear Suspension", attrs.get("rear_suspension")),
-        ("Rear Brakes", attrs.get("rear_brakes")),
-        ("ABS", attrs.get("abs")),
-        ("Wheel Size", attrs.get("wheel_size")),
-    ]
-    
-    has_content = False
-    for label, value in feature_fields:
-        if value:
-            lines.append(f"**{label}:** {_format_value(value)}")
-            has_content = True
-    
-    if not has_content:
-        lines.append("_No feature data available_")
+    if is_autodev:
+        # For Auto.dev, show features list
+        features = attrs.get("features", [])
+        if features:
+            # Show first 15 features
+            for feature in features[:15]:
+                lines.append(f"• {feature}")
+            if len(features) > 15:
+                lines.append(f"\n... and {len(features) - 15} more features")
+        else:
+            lines.append("_No feature data available_")
+    else:
+        # Original formatting for CarsXE/NHTSA data
+        feature_fields = [
+            ("Number of Doors", attrs.get("no_of_doors")),
+            ("Number of Seats", attrs.get("no_of_seats")),
+            ("Number of Axles", attrs.get("no_of_axels")),
+            ("Steering Type", attrs.get("steering_type")),
+            ("Front Suspension", attrs.get("front_suspension")),
+            ("Rear Suspension", attrs.get("rear_suspension")),
+            ("Rear Brakes", attrs.get("rear_brakes")),
+            ("ABS", attrs.get("abs")),
+            ("Wheel Size", attrs.get("wheel_size")),
+        ]
+        
+        has_content = False
+        for label, value in feature_fields:
+            if value:
+                lines.append(f"**{label}:** {_format_value(value)}")
+                has_content = True
+        
+        if not has_content:
+            lines.append("_No feature data available_")
     
     return "\n".join(lines)
 
@@ -566,4 +803,3 @@ def format_comparison(data1: Dict[str, Any], data2: Dict[str, Any]) -> str:
             lines.append(f"**{label}:** {_format_value(val1)} ✓")
     
     return "\n".join(lines)
-
