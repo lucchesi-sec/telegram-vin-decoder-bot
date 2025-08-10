@@ -99,14 +99,13 @@ async def cmd_settings(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     # Get user settings
     settings = await user_data_mgr.get_user_settings(user_id)
     current_service = settings.get("service", "NHTSA")
-    has_carsxe_key = bool(settings.get("carsxe_api_key"))
+    has_carsxe_key = False  # CarsXE removed
     has_autodev_key = bool(settings.get("autodev_api_key"))
     
     # Create settings keyboard
     from .keyboards import get_settings_keyboard
     keyboard = get_settings_keyboard(
         current_service=current_service,
-        has_carsxe_key=has_carsxe_key,
         has_autodev_key=has_autodev_key
     )
     
@@ -114,7 +113,6 @@ async def cmd_settings(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     service_desc = {
         "NHTSA": "✅ Using NHTSA (Free, no API key required)",
         "AutoDev": "🔄 Using Auto.dev (Requires API key)",
-        "CarsXE": "🔄 Using CarsXE (Requires API key)"
     }
     
     current_desc = service_desc.get(current_service, "NHTSA (Free)")
@@ -222,14 +220,13 @@ async def show_settings_menu(update: Update, context: ContextTypes.DEFAULT_TYPE)
     # Get user settings
     settings = await user_data_mgr.get_user_settings(user_id)
     current_service = settings.get("service", "NHTSA")
-    has_carsxe_key = bool(settings.get("carsxe_api_key"))
+    has_carsxe_key = False  # CarsXE removed
     has_autodev_key = bool(settings.get("autodev_api_key"))
     
     # Create settings keyboard
     from .keyboards import get_settings_keyboard
     keyboard = get_settings_keyboard(
         current_service=current_service,
-        has_carsxe_key=has_carsxe_key,
         has_autodev_key=has_autodev_key
     )
     
@@ -237,7 +234,6 @@ async def show_settings_menu(update: Update, context: ContextTypes.DEFAULT_TYPE)
     service_desc = {
         "NHTSA": "✅ Using NHTSA (Free, no API key required)",
         "AutoDev": "🔄 Using Auto.dev (Requires API key)",
-        "CarsXE": "🔄 Using CarsXE (Requires API key)"
     }
     
     current_desc = service_desc.get(current_service, "NHTSA (Free)")
@@ -626,20 +622,18 @@ async def handle_callback_query(update: Update, context: ContextTypes.DEFAULT_TY
         if user_data_mgr and user_id:
             settings = await user_data_mgr.get_user_settings(user_id)
             current_service = settings.get("service", "NHTSA")
-            has_carsxe_key = bool(settings.get("carsxe_api_key"))
+            has_carsxe_key = False  # CarsXE removed
             has_autodev_key = bool(settings.get("autodev_api_key"))
             
             from .keyboards import get_settings_keyboard
             keyboard = get_settings_keyboard(
                 current_service=current_service,
-                has_carsxe_key=has_carsxe_key,
                 has_autodev_key=has_autodev_key
             )
             
             service_desc = {
                 "NHTSA": "✅ Using NHTSA (Free, no API key required)",
                 "AutoDev": "🔄 Using Auto.dev (Requires API key)",
-                "CarsXE": "🔄 Using CarsXE (Requires API key)"
             }
             
             current_desc = service_desc.get(current_service, "NHTSA (Free)")
@@ -671,20 +665,17 @@ async def handle_callback_query(update: Update, context: ContextTypes.DEFAULT_TY
             # Get updated settings
             settings = await user_data_mgr.get_user_settings(user_id)
             current_service = settings.get("service", "NHTSA")
-            has_carsxe_key = bool(settings.get("carsxe_api_key"))
             has_autodev_key = bool(settings.get("autodev_api_key"))
             
             from .keyboards import get_settings_keyboard
             keyboard = get_settings_keyboard(
                 current_service=current_service,
-                has_carsxe_key=has_carsxe_key,
                 has_autodev_key=has_autodev_key
             )
             
             service_desc = {
                 "NHTSA": "✅ Using NHTSA (Free, no API key required)",
                 "AutoDev": "🔄 Using Auto.dev (Requires API key)",
-                "CarsXE": "🔄 Using CarsXE (Requires API key)"
             }
             
             current_desc = service_desc.get(current_service, "NHTSA (Free)")
@@ -747,20 +738,17 @@ async def handle_callback_query(update: Update, context: ContextTypes.DEFAULT_TY
             # Show updated settings
             updated_settings = await user_data_mgr.get_user_settings(user_id)
             current_service = updated_settings.get("service", "NHTSA")
-            has_carsxe_key = bool(updated_settings.get("carsxe_api_key"))
             has_autodev_key = bool(updated_settings.get("autodev_api_key"))
             
             from .keyboards import get_settings_keyboard
             keyboard = get_settings_keyboard(
                 current_service=current_service,
-                has_carsxe_key=has_carsxe_key,
                 has_autodev_key=has_autodev_key
             )
             
             service_desc = {
                 "NHTSA": "✅ Using NHTSA (Free, no API key required)",
                 "AutoDev": "🔄 Using Auto.dev (Requires API key)",
-                "CarsXE": "🔄 Using CarsXE (Requires API key)"
             }
             
             current_desc = service_desc.get(current_service, "NHTSA (Free)")
@@ -780,7 +768,7 @@ async def handle_callback_query(update: Update, context: ContextTypes.DEFAULT_TY
             )
             
             # Notify user
-            service_name = "Auto.dev" if service == "AutoDev" else ("CarsXE" if service == "CarsXE" else service)
+            service_name = "Auto.dev" if service == "AutoDev" else service
             await query.message.reply_text(
                 f"✅ API key for {service_name} has been removed."
             )
@@ -979,7 +967,7 @@ async def refresh_vin_data(query: CallbackQuery, context: ContextTypes.DEFAULT_T
     try:
         # Clear cache for this VIN if cache exists
         if hasattr(client, 'cache') and client.cache:
-            cache_key = f"vin:{vin.upper()}"
+            cache_key = f"vin:{client.service_name.lower()}:{vin.upper()}"
             try:
                 await client.cache.delete(cache_key)
             except:
@@ -1069,13 +1057,7 @@ async def setup_application():
             logger.info("Using Upstash cache for user data")
         except Exception as e:
             logger.warning(f"Failed to initialize Upstash cache: {e}")
-    elif settings.redis_url:
-        try:
-            from .redis_cache import RedisCache
-            cache = RedisCache(settings.redis_url, ttl=settings.redis_ttl_seconds)
-            logger.info("Using Redis cache for user data")
-        except Exception as e:
-            logger.warning(f"Failed to initialize Redis cache: {e}")
+    # Redis support removed; Upstash only
     
     # Initialize user data manager
     user_data_mgr = UserDataManager(cache=cache)
@@ -1141,13 +1123,7 @@ def run() -> None:
             logger.info("Using Upstash cache for user data")
         except Exception as e:
             logger.warning(f"Failed to initialize Upstash cache: {e}")
-    elif settings.redis_url:
-        try:
-            from .redis_cache import RedisCache
-            cache = RedisCache(settings.redis_url, ttl=settings.redis_ttl_seconds)
-            logger.info("Using Redis cache for user data")
-        except Exception as e:
-            logger.warning(f"Failed to initialize Redis cache: {e}")
+    # Redis support removed; Upstash only
     
     # Initialize user data manager
     user_data_mgr = UserDataManager(cache=cache)

@@ -92,33 +92,27 @@ def get_saved_vins_keyboard(saved_vins: List[tuple]) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(buttons)
 
 
-def get_settings_keyboard(current_service: str = "NHTSA", has_carsxe_key: bool = False, has_autodev_key: bool = False) -> InlineKeyboardMarkup:
+def get_settings_keyboard(current_service: str = "NHTSA", has_autodev_key: bool = False) -> InlineKeyboardMarkup:
     """Create settings keyboard for service selection and API key management
     
     Args:
-        current_service: Currently selected service (CarsXE, NHTSA, or AutoDev)
-        has_carsxe_key: Whether user has a CarsXE API key configured
-        has_autodev_key: Whether user has an Auto.dev API key configured
+        current_service: Currently selected service (NHTSA or AutoDev)
+        has_autodev_key: Whether user has an Auto.dev (premium) API key configured
     """
     buttons = []
     
-    # Service selection buttons
-    carsxe_check = "✅" if current_service == "CarsXE" else ""
+    # Service selection buttons (CarsXE removed)
     nhtsa_check = "✅" if current_service == "NHTSA" else ""
     autodev_check = "✅" if current_service == "AutoDev" else ""
-    
-    # First row: CarsXE and NHTSA
+
+    # First row: NHTSA
     buttons.append([
-        InlineKeyboardButton(
-            f"{carsxe_check} CarsXE", 
-            callback_data="set_service:CarsXE"
-        ),
         InlineKeyboardButton(
             f"{nhtsa_check} NHTSA (Free)", 
             callback_data="set_service:NHTSA"
         )
     ])
-    
+
     # Second row: Auto.dev
     buttons.append([
         InlineKeyboardButton(
@@ -126,18 +120,6 @@ def get_settings_keyboard(current_service: str = "NHTSA", has_carsxe_key: bool =
             callback_data="set_service:AutoDev"
         )
     ])
-    
-    # API key management for CarsXE
-    if current_service == "CarsXE":
-        if has_carsxe_key:
-            buttons.append([
-                InlineKeyboardButton("🔐 Update API Key", callback_data="update_api_key:CarsXE"),
-                InlineKeyboardButton("🗑️ Remove API Key", callback_data="remove_api_key:CarsXE")
-            ])
-        else:
-            buttons.append([
-                InlineKeyboardButton("🔑 Add API Key", callback_data="add_api_key:CarsXE")
-            ])
     
     # Always show Auto.dev API key management regardless of current service
     # This ensures users can add an API key even if they haven't selected Auto.dev yet

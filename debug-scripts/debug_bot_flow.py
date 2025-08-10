@@ -5,7 +5,7 @@ Debug script to test the exact flow used by the Telegram bot
 import asyncio
 import os
 from dotenv import load_dotenv
-from vinbot.carsxe_client import CarsXEClient
+# CarsXE removed
 from vinbot.vin import is_valid_vin, normalize_vin
 
 # Load environment variables
@@ -26,7 +26,7 @@ async def test_bot_flow():
         "2T1BURHE5JC012345",  # Another valid VIN
     ]
     
-    client = CarsXEClient(api_key=api_key)
+    # CarsXE removed
     
     for vin in test_vins:
         print(f"\n--- Testing VIN: {vin} ---")

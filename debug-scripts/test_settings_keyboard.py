@@ -17,7 +17,7 @@ def test_settings_keyboard():
     
     # Test with AutoDev service selected and no API keys
     print("1. Testing keyboard with AutoDev service and no API keys...")
-    keyboard = get_settings_keyboard(current_service="AutoDev", has_carsxe_key=False, has_autodev_key=False)
+    keyboard = get_settings_keyboard(current_service="AutoDev", has_autodev_key=False)
     
     # Check that we have the expected number of rows
     assert len(keyboard.inline_keyboard) == 4, "Keyboard should have 4 rows"
@@ -40,7 +40,7 @@ def test_settings_keyboard():
     
     # Test with NHTSA service selected and Auto.dev API key set
     print("2. Testing keyboard with NHTSA service and Auto.dev API key set...")
-    keyboard = get_settings_keyboard(current_service="NHTSA", has_carsxe_key=False, has_autodev_key=True)
+    keyboard = get_settings_keyboard(current_service="NHTSA", has_autodev_key=True)
     
     # Check that we have the expected number of rows
     assert len(keyboard.inline_keyboard) == 4, "Keyboard should have 4 rows"

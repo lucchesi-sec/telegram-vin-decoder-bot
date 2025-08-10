@@ -80,7 +80,7 @@ class NHTSAClient(VINDecoderBase):
             data: Raw NHTSA API response
             
         Returns:
-            Standardized dictionary matching CarsXE format
+            Standardized dictionary for downstream formatters
         """
         results = data.get("Results", [])
         
@@ -129,7 +129,7 @@ class NHTSAClient(VINDecoderBase):
                 elif variable == "Series":
                     vehicle_info["series"] = value
         
-        # Format in a structure similar to CarsXE for compatibility
+        # Standardized structure for downstream formatters
         formatted = {
             "success": True,
             "vin": data.get("SearchCriteria", "").replace("VIN:", ""),

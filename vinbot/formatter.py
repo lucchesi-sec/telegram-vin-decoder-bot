@@ -38,7 +38,7 @@ def _get_vehicle_icon(body_type: str) -> str:
 
 
 def format_vehicle_summary(data: Dict[str, Any]) -> str:
-    """Format complete vehicle information from CarsXE API response"""
+    """Format complete vehicle information from API response (NHTSA/Auto.dev)"""
     
     # Handle both direct attributes and nested attributes structure
     if isinstance(data, dict) and "attributes" in data:
@@ -55,7 +55,7 @@ def format_vehicle_summary(data: Dict[str, Any]) -> str:
     if is_autodev:
         return _format_autodev_summary(data)
     
-    # Original formatting for CarsXE/NHTSA data
+    # Original formatting for NHTSA data
     lines: List[str] = []
     
     # VIN and Basic Info
@@ -535,7 +535,7 @@ def format_specs_section(data: Dict[str, Any]) -> str:
         
         return "\n".join(lines)
     
-    # Original formatting for CarsXE/NHTSA data
+    # Original formatting for NHTSA data
     lines = ["📋 **SPECIFICATIONS**", "─" * 20]
     
     specs_fields = [
@@ -577,7 +577,7 @@ def format_manufacturing_section(data: Dict[str, Any]) -> str:
         lines.append("_Manufacturing information not available for Auto.dev data_")
         return "\n".join(lines)
     
-    # Original formatting for CarsXE/NHTSA data
+    # Original formatting for NHTSA data
     lines = ["🏭 **MANUFACTURING**", "─" * 20]
     
     mfg_fields = [
@@ -615,7 +615,7 @@ def format_dimensions_section(data: Dict[str, Any]) -> str:
         lines.append("_Dimension information not available for Auto.dev data_")
         return "\n".join(lines)
     
-    # Original formatting for CarsXE/NHTSA data
+    # Original formatting for NHTSA data
     lines = ["📏 **DIMENSIONS**", "─" * 20]
     
     dimension_fields = [
@@ -679,7 +679,7 @@ def format_performance_section(data: Dict[str, Any]) -> str:
         if not has_content:
             lines.append("_No performance data available_")
     else:
-        # Original formatting for CarsXE/NHTSA data
+        # Original formatting for NHTSA data
         performance_fields = [
             ("Max Speed", attrs.get("max_speed_kmh"), "km/h"),
             ("CO2 Emission", attrs.get("avg_co2_emission_g_km"), "g/km"),
@@ -735,7 +735,7 @@ def format_features_section(data: Dict[str, Any]) -> str:
         else:
             lines.append("_No feature data available_")
     else:
-        # Original formatting for CarsXE/NHTSA data
+        # Original formatting for NHTSA data
         feature_fields = [
             ("Number of Doors", attrs.get("no_of_doors")),
             ("Number of Seats", attrs.get("no_of_seats")),

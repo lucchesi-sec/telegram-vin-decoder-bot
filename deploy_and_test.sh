@@ -1,6 +1,6 @@
 #!/bin/bash
 
-echo "Deploying VinBot with CarsXE client fixes..."
+echo "Deploying VinBot with Upstash cache and NHTSA/Auto.dev support..."
 echo "============================================"
 
 # Deploy to Fly.io
@@ -23,12 +23,12 @@ import os
 import asyncio
 
 async def test():
-    api_key = os.getenv('CARSXE_API_KEY')
+    api_key = os.getenv('AUTO_DEV_API_KEY')
     if not api_key:
         print('ERROR: No API key found')
         return
     
-    url = 'https://api.carsxe.com/specs'
+    url = 'https://auto.dev/api'
     params = {'key': api_key, 'vin': '1HGBH41JXMN109186'}
     
     print(f'Testing {url}...')

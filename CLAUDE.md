@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-A Telegram bot that decodes Vehicle Identification Numbers (VINs) using the CarsXE API. The bot supports caching via Redis or Upstash, runs health checks for deployment on Fly.io, and provides vehicle information in a formatted response.
+A Telegram bot that decodes Vehicle Identification Numbers (VINs) using NHTSA (default) or Auto.dev (premium). The bot uses Upstash Redis (REST) for caching, runs health checks for deployment on Fly.io, and provides vehicle information in a formatted response.
 
 ## Development Commands
 
@@ -75,22 +75,21 @@ fly scale vm shared-cpu-1x
    - Runs health check server on port 8080 for Fly.io monitoring
    - Manages graceful shutdown via signal handlers
 
-2. **CarsXE Client** (`vinbot/carsxe_client.py`):
-   - Async HTTP client for CarsXE API using httpx
-   - Endpoint: `https://api.carsxe.com/specs`
+2. Auto.dev Client (`vinbot/autodev_client.py`):
+   - Async HTTP client for Auto.dev API using httpx
+   - Endpoint: `https://auto.dev/api`
    - Handles caching through injected cache interface
    - Error handling for API failures and invalid responses
 
 3. **Caching Layer**:
-   - **RedisCache** (`vinbot/redis_cache.py`): Standard Redis caching
    - **UpstashCache** (`vinbot/upstash_cache.py`): REST-based Upstash Redis
-   - Cache priority: Upstash (if configured) > Redis (if configured) > No cache
+   - Cache priority: Upstash (if configured) > No cache
    - Default TTL: 24 hours (configurable via `REDIS_TTL_SECONDS`)
    - Cache keys format: `vin:{VIN_UPPERCASE}`
 
 4. **Configuration** (`vinbot/config.py`):
    - Environment-based configuration using python-dotenv
-   - Required: `TELEGRAM_BOT_TOKEN`, `CARSXE_API_KEY`
+   - Required: `TELEGRAM_BOT_TOKEN`
    - Optional: `HTTP_TIMEOUT_SECONDS`, `LOG_LEVEL`, `REDIS_URL`, `REDIS_TTL_SECONDS`, `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN`
 
 5. **VIN Validation** (`vinbot/vin.py`):
@@ -99,7 +98,7 @@ fly scale vm shared-cpu-1x
    - Normalizes VINs to uppercase
 
 6. **Response Formatter** (`vinbot/formatter.py`):
-   - Formats CarsXE API responses into human-readable summaries
+   - Formats NHTSA/Auto.dev responses into human-readable summaries
    - Handles missing fields gracefully
    - Includes raw JSON in collapsible format
 
@@ -119,7 +118,7 @@ fly scale vm shared-cpu-1x
 - Proper cleanup in `on_shutdown` handler
 
 ### Error Handling
-- Custom `CarsXEError` for API-specific failures
+  
 - Graceful handling of network errors
 - User-friendly error messages in Telegram
 
@@ -134,7 +133,8 @@ fly scale vm shared-cpu-1x
 ```bash
 # Required
 TELEGRAM_BOT_TOKEN=          # From @BotFather
-CARSXE_API_KEY=              # From carsxe.com
+UPSTASH_REDIS_REST_URL=
+UPSTASH_REDIS_REST_TOKEN=
 
 # Optional
 HTTP_TIMEOUT_SECONDS=15      # API timeout
@@ -161,7 +161,7 @@ While no formal tests exist, use these debug scripts for validation:
 3. Update `WELCOME_TEXT` with new command description
 
 ### Modifying Cache Behavior
-1. Update cache implementation in `redis_cache.py` or `upstash_cache.py`
+1. Update cache implementation in `upstash_cache.py`
 2. Adjust TTL via `REDIS_TTL_SECONDS` environment variable
 3. Cache interface is consistent across both implementations
 

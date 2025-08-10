@@ -392,9 +392,9 @@ class UserDataManager:
             if settings:
                 # Ensure all expected keys exist
                 if "service" not in settings:
-                    settings["service"] = "NHTSA"  # Changed default to NHTSA
-                if "carsxe_api_key" not in settings:
-                    settings["carsxe_api_key"] = None
+                    settings["service"] = "NHTSA"  # Default to NHTSA
+                # Remove legacy CarsXE key if present
+                settings.pop("carsxe_api_key", None)
                 if "nhtsa_api_key" not in settings:
                     settings["nhtsa_api_key"] = None
                 if "autodev_api_key" not in settings:
@@ -404,7 +404,6 @@ class UserDataManager:
             # Return defaults if no settings exist
             return {
                 "service": "NHTSA",
-                "carsxe_api_key": None,
                 "nhtsa_api_key": None,
                 "autodev_api_key": None
             }
@@ -413,7 +412,6 @@ class UserDataManager:
             logger.error(f"Error getting user settings: {e}")
             return {
                 "service": "NHTSA",
-                "carsxe_api_key": None,
                 "nhtsa_api_key": None,
                 "autodev_api_key": None
             }
@@ -423,7 +421,7 @@ class UserDataManager:
         
         Args:
             user_id: User ID
-            service: Service name (CarsXE, NHTSA, or AutoDev)
+            service: Service name (NHTSA or AutoDev)
             
         Returns:
             True if successful, False otherwise
@@ -460,7 +458,7 @@ class UserDataManager:
         
         Args:
             user_id: User ID
-            service: Service name (CarsXE, NHTSA, or AutoDev)
+            service: Service name (NHTSA or AutoDev)
             api_key: API key to store
             
         Returns:
@@ -471,9 +469,7 @@ class UserDataManager:
             settings = await self.get_user_settings(user_id)
             
             # Update API key for the specified service
-            if service.lower() == "carsxe":
-                settings["carsxe_api_key"] = api_key
-            elif service.lower() == "nhtsa":
+            if service.lower() == "nhtsa":
                 settings["nhtsa_api_key"] = api_key  # NHTSA doesn't need key but keeping for consistency
             elif service.lower() == "autodev":
                 settings["autodev_api_key"] = api_key
@@ -506,7 +502,7 @@ class UserDataManager:
         
         Args:
             user_id: User ID
-            service: Service name (CarsXE or NHTSA)
+            service: Service name (NHTSA or AutoDev)
             
         Returns:
             True if successful, False otherwise

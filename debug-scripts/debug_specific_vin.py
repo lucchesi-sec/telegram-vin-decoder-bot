@@ -5,7 +5,7 @@ Debug script to test the specific VIN that's causing issues
 import asyncio
 import os
 from dotenv import load_dotenv
-from vinbot.carsxe_client import CarsXEClient
+# CarsXE removed
 from vinbot.vin import is_valid_vin, normalize_vin
 
 # Load environment variables
@@ -27,7 +27,7 @@ async def test_specific_vin():
     normalized = normalize_vin(vin)
     print(f"Normalized VIN: {normalized}")
     
-    client = CarsXEClient(api_key=api_key)
+    # CarsXE removed
     
     try:
         print(f"Attempting to decode VIN: {normalized}")
@@ -38,9 +38,7 @@ async def test_specific_vin():
         print(f"Year: {data.get('attributes', {}).get('year', 'N/A')}")
     except Exception as e:
         print(f"Error: {e}")
-        # Let's also check if this is a CarsXEError
-        if "CarsXEError" in str(type(e)):
-            print(f"CarsXEError details: {str(e)}")
+        # CarsXE removed
     finally:
         await client.aclose()
 

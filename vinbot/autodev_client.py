@@ -71,7 +71,7 @@ class AutoDevClient(VINDecoderBase):
                 
                 data = response.json()
                 
-                # Format the response to our standard format
+        # Format the response to our standardized format
                 formatted_data = self.format_response(data)
                 
                 # Cache the result
@@ -188,7 +188,7 @@ class AutoDevClient(VINDecoderBase):
         # Remove None values
         vehicle_info = {k: v for k, v in vehicle_info.items() if v is not None}
         
-        # Format in a structure similar to CarsXE for compatibility
+        # Standardized structure for downstream formatters
         formatted = {
             "success": True,
             "vin": data.get("vin", ""),

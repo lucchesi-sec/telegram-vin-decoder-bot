@@ -9,8 +9,8 @@ A Telegram bot that takes a VIN, decodes it using either the free NHTSA API or t
 - Formats a readable vehicle summary
 - Config via environment variables
 - Optional Docker support
-- User settings to switch between services
-- API key management for premium services
+- User settings to switch between services (NHTSA or Auto.dev)
+- API key management for premium services (Auto.dev)
 
 ## Prerequisites
 - Python 3.9+
@@ -82,7 +82,8 @@ Environment variables (via `.env`):
 - `TELEGRAM_BOT_TOKEN`: Telegram bot token from @BotFather
 - `HTTP_TIMEOUT_SECONDS` (optional): HTTP client timeout in seconds (default 15)
 - `LOG_LEVEL` (optional): INFO, DEBUG, etc.
-- `REDIS_URL` (optional): Redis connection URL for caching
+- `UPSTASH_REDIS_REST_URL` (optional): Upstash REST URL for caching
+- `UPSTASH_REDIS_REST_TOKEN` (optional): Upstash REST token
 - `REDIS_TTL_SECONDS` (optional): Cache TTL in seconds (default 86400)
 
 ## Docker

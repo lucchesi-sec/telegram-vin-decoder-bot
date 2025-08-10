@@ -12,7 +12,7 @@ import sys
 # Add project to path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from vinbot.carsxe_client import CarsXEClient
+# CarsXE removed
 from vinbot.formatter import format_vehicle_summary
 from vinbot.formatter_extensions import format_market_value, format_history
 
@@ -27,7 +27,7 @@ async def main():
     print("=" * 60)
     
     # Create client
-    client = CarsXEClient(api_key=API_KEY, timeout_seconds=30)
+    # CarsXE removed
     
     try:
         # Decode VIN (this now fetches all endpoints)

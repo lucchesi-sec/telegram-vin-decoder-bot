@@ -5,7 +5,7 @@ Debug script to test the exact scenario from the error report
 import asyncio
 import os
 from dotenv import load_dotenv
-from vinbot.carsxe_client import CarsXEClient
+# CarsXE removed
 from vinbot.vin import is_valid_vin, normalize_vin
 
 # Load environment variables
@@ -37,7 +37,7 @@ async def test_exact_scenario():
     
     # If for some reason the validation passed, let's see what happens
     print("Attempting to decode anyway...")
-    client = CarsXEClient(api_key=api_key)
+    # CarsXE removed
     
     try:
         data = await client.decode_vin(normalized)

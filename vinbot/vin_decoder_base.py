@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import Dict, Any, Optional
 import logging
+import json
 
 logger = logging.getLogger(__name__)
 
@@ -61,10 +62,15 @@ class VINDecoderBase(ABC):
             
         try:
             cache_key = f"vin:{self.service_name.lower()}:{vin.upper()}"
-            result = await self.cache.get(cache_key)
-            if result:
+            raw = await self.cache.get(cache_key)
+            if raw:
                 logger.info(f"Cache hit for VIN {vin} from {self.service_name}")
-                return result
+                try:
+                    return json.loads(raw)
+                except Exception:
+                    # If value is not JSON, ignore and treat as miss
+                    logger.warning("Cached value was not valid JSON; ignoring")
+                    return None
         except Exception as e:
             logger.error(f"Cache get error: {e}")
         
@@ -77,7 +83,7 @@ class VINDecoderBase(ABC):
             
         try:
             cache_key = f"vin:{self.service_name.lower()}:{vin.upper()}"
-            await self.cache.set(cache_key, data, ttl=ttl)
+            await self.cache.set(cache_key, json.dumps(data), ttl=ttl)
             logger.info(f"Cached result for VIN {vin} from {self.service_name}")
         except Exception as e:
             logger.error(f"Cache set error: {e}")
