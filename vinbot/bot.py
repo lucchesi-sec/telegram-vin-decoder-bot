@@ -1158,6 +1158,7 @@ def run() -> None:
     application.bot_data["settings"] = settings
     application.bot_data["nhtsa_client"] = nhtsa_client
     application.bot_data["user_data_manager"] = user_data_mgr
+    application.bot_data["cache"] = cache  # Store cache reference for AutoDevClient
 
     # Register command handlers
     application.add_handler(CommandHandler("start", cmd_start))

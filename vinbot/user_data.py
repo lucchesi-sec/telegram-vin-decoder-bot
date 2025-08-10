@@ -17,6 +17,9 @@ class UserDataManager:
         self.favorites_limit = 20  # Max saved vehicles per user
         self.history_ttl = 30 * 24 * 3600  # 30 days for history
         self.favorites_ttl = 365 * 24 * 3600  # 1 year for favorites
+        
+        # In-memory fallback storage when no cache is configured
+        self._in_memory_storage = {}
     
     def _get_history_key(self, user_id: int) -> str:
         """Get cache key for user's history"""
@@ -36,22 +39,31 @@ class UserDataManager:
     
     async def add_to_history(self, user_id: int, vin: str, vehicle_data: Dict[str, Any]) -> bool:
         """Add a VIN to user's search history"""
-        if not self.cache:
-            return False
-        
         try:
             # Store vehicle data separately for quick access
             vehicle_key = self._get_vehicle_data_key(vin)
-            await self.cache.set(vehicle_key, json.dumps(vehicle_data), ttl=self.history_ttl)
+            if self.cache:
+                await self.cache.set(vehicle_key, json.dumps(vehicle_data), ttl=self.history_ttl)
+            else:
+                # In-memory fallback
+                self._in_memory_storage[vehicle_key] = {
+                    "data": vehicle_data,
+                    "timestamp": datetime.now(),
+                    "ttl": self.history_ttl
+                }
             
             # Get current history
             history_key = self._get_history_key(user_id)
-            history_json = await self.cache.get(history_key)
-            
-            if history_json:
-                history = json.loads(history_json)
+            if self.cache:
+                history_json = await self.cache.get(history_key)
+                if history_json:
+                    history = json.loads(history_json)
+                else:
+                    history = []
             else:
-                history = []
+                # In-memory fallback
+                history_data = self._in_memory_storage.get(history_key, {})
+                history = history_data.get("data", []) if history_data else []
             
             # Extract vehicle info for display
             attrs = vehicle_data.get("attributes", {})
@@ -74,7 +86,15 @@ class UserDataManager:
             history = history[:self.history_limit]
             
             # Save back to cache
-            await self.cache.set(history_key, json.dumps(history), ttl=self.history_ttl)
+            if self.cache:
+                await self.cache.set(history_key, json.dumps(history), ttl=self.history_ttl)
+            else:
+                # In-memory fallback
+                self._in_memory_storage[history_key] = {
+                    "data": history,
+                    "timestamp": datetime.now(),
+                    "ttl": self.history_ttl
+                }
             
             logger.info(f"Added VIN {vin} to history for user {user_id}")
             return True
@@ -89,17 +109,17 @@ class UserDataManager:
         Returns:
             List of tuples (vin, make_model, timestamp)
         """
-        if not self.cache:
-            return []
-        
         try:
             history_key = self._get_history_key(user_id)
-            history_json = await self.cache.get(history_key)
-            
-            if not history_json:
-                return []
-            
-            history = json.loads(history_json)
+            if self.cache:
+                history_json = await self.cache.get(history_key)
+                if not history_json:
+                    return []
+                history = json.loads(history_json)
+            else:
+                # In-memory fallback
+                history_data = self._in_memory_storage.get(history_key, {})
+                history = history_data.get("data", []) if history_data else []
             
             # Convert to tuples for display
             result = []
@@ -118,22 +138,31 @@ class UserDataManager:
     
     async def add_to_favorites(self, user_id: int, vin: str, vehicle_data: Dict[str, Any], nickname: Optional[str] = None) -> bool:
         """Add a vehicle to user's favorites"""
-        if not self.cache:
-            return False
-        
         try:
             # Store vehicle data
             vehicle_key = self._get_vehicle_data_key(vin)
-            await self.cache.set(vehicle_key, json.dumps(vehicle_data), ttl=self.favorites_ttl)
+            if self.cache:
+                await self.cache.set(vehicle_key, json.dumps(vehicle_data), ttl=self.favorites_ttl)
+            else:
+                # In-memory fallback
+                self._in_memory_storage[vehicle_key] = {
+                    "data": vehicle_data,
+                    "timestamp": datetime.now(),
+                    "ttl": self.favorites_ttl
+                }
             
             # Get current favorites
             favorites_key = self._get_favorites_key(user_id)
-            favorites_json = await self.cache.get(favorites_key)
-            
-            if favorites_json:
-                favorites = json.loads(favorites_json)
+            if self.cache:
+                favorites_json = await self.cache.get(favorites_key)
+                if favorites_json:
+                    favorites = json.loads(favorites_json)
+                else:
+                    favorites = []
             else:
-                favorites = []
+                # In-memory fallback
+                favorites_data = self._in_memory_storage.get(favorites_key, {})
+                favorites = favorites_data.get("data", []) if favorites_data else []
             
             # Extract vehicle info
             attrs = vehicle_data.get("attributes", {})
@@ -158,7 +187,15 @@ class UserDataManager:
                 favorites = favorites[-self.favorites_limit:]  # Keep most recent
             
             # Save back to cache
-            await self.cache.set(favorites_key, json.dumps(favorites), ttl=self.favorites_ttl)
+            if self.cache:
+                await self.cache.set(favorites_key, json.dumps(favorites), ttl=self.favorites_ttl)
+            else:
+                # In-memory fallback
+                self._in_memory_storage[favorites_key] = {
+                    "data": favorites,
+                    "timestamp": datetime.now(),
+                    "ttl": self.favorites_ttl
+                }
             
             logger.info(f"Added VIN {vin} to favorites for user {user_id}")
             return True
@@ -173,17 +210,17 @@ class UserDataManager:
         Returns:
             List of tuples (vin, nickname, make_model)
         """
-        if not self.cache:
-            return []
-        
         try:
             favorites_key = self._get_favorites_key(user_id)
-            favorites_json = await self.cache.get(favorites_key)
-            
-            if not favorites_json:
-                return []
-            
-            favorites = json.loads(favorites_json)
+            if self.cache:
+                favorites_json = await self.cache.get(favorites_key)
+                if not favorites_json:
+                    return []
+                favorites = json.loads(favorites_json)
+            else:
+                # In-memory fallback
+                favorites_data = self._in_memory_storage.get(favorites_key, {})
+                favorites = favorites_data.get("data", []) if favorites_data else []
             
             # Convert to tuples
             result = []
@@ -202,17 +239,19 @@ class UserDataManager:
     
     async def remove_from_favorites(self, user_id: int, vin: str) -> bool:
         """Remove a vehicle from user's favorites"""
-        if not self.cache:
-            return False
-        
         try:
             favorites_key = self._get_favorites_key(user_id)
-            favorites_json = await self.cache.get(favorites_key)
-            
-            if not favorites_json:
-                return False
-            
-            favorites = json.loads(favorites_json)
+            if self.cache:
+                favorites_json = await self.cache.get(favorites_key)
+                if not favorites_json:
+                    return False
+                favorites = json.loads(favorites_json)
+            else:
+                # In-memory fallback
+                favorites_data = self._in_memory_storage.get(favorites_key, {})
+                favorites = favorites_data.get("data", []) if favorites_data else []
+                if not favorites:
+                    return False
             
             # Remove the VIN
             original_len = len(favorites)
@@ -220,7 +259,15 @@ class UserDataManager:
             
             if len(favorites) < original_len:
                 # Save updated list
-                await self.cache.set(favorites_key, json.dumps(favorites), ttl=self.favorites_ttl)
+                if self.cache:
+                    await self.cache.set(favorites_key, json.dumps(favorites), ttl=self.favorites_ttl)
+                else:
+                    # In-memory fallback
+                    self._in_memory_storage[favorites_key] = {
+                        "data": favorites,
+                        "timestamp": datetime.now(),
+                        "ttl": self.favorites_ttl
+                    }
                 logger.info(f"Removed VIN {vin} from favorites for user {user_id}")
                 return True
             
@@ -232,17 +279,17 @@ class UserDataManager:
     
     async def get_vehicle_data(self, vin: str) -> Optional[Dict[str, Any]]:
         """Get cached vehicle data by VIN"""
-        if not self.cache:
-            return None
-        
         try:
             vehicle_key = self._get_vehicle_data_key(vin)
-            data_json = await self.cache.get(vehicle_key)
-            
-            if data_json:
-                return json.loads(data_json)
-            
-            return None
+            if self.cache:
+                data_json = await self.cache.get(vehicle_key)
+                if data_json:
+                    return json.loads(data_json)
+                return None
+            else:
+                # In-memory fallback
+                vehicle_data = self._in_memory_storage.get(vehicle_key, {})
+                return vehicle_data.get("data") if vehicle_data else None
             
         except Exception as e:
             logger.error(f"Error getting vehicle data: {e}")
@@ -250,13 +297,18 @@ class UserDataManager:
     
     async def clear_user_history(self, user_id: int) -> bool:
         """Clear user's search history"""
-        if not self.cache:
-            return False
-        
         try:
             history_key = self._get_history_key(user_id)
             # Set to empty list rather than deleting
-            await self.cache.set(history_key, json.dumps([]), ttl=self.history_ttl)
+            if self.cache:
+                await self.cache.set(history_key, json.dumps([]), ttl=self.history_ttl)
+            else:
+                # In-memory fallback
+                self._in_memory_storage[history_key] = {
+                    "data": [],
+                    "timestamp": datetime.now(),
+                    "ttl": self.history_ttl
+                }
             logger.info(f"Cleared history for user {user_id}")
             return True
             
@@ -266,17 +318,20 @@ class UserDataManager:
     
     async def update_favorite_nickname(self, user_id: int, vin: str, new_nickname: str) -> bool:
         """Update the nickname for a saved vehicle"""
-        if not self.cache:
-            return False
-        
         try:
             favorites_key = self._get_favorites_key(user_id)
-            favorites_json = await self.cache.get(favorites_key)
-            
-            if not favorites_json:
-                return False
-            
-            favorites = json.loads(favorites_json)
+            if self.cache:
+                favorites_json = await self.cache.get(favorites_key)
+                if not favorites_json:
+                    return False
+                favorites = json.loads(favorites_json)
+            else:
+ 
+               # In-memory fallback
+                favorites_data = self._in_memory_storage.get(favorites_key, {})
+                favorites = favorites_data.get("data", []) if favorites_data else []
+                if not favorites:
+                    return False
             
             # Find and update the entry
             updated = False
@@ -287,7 +342,15 @@ class UserDataManager:
                     break
             
             if updated:
-                await self.cache.set(favorites_key, json.dumps(favorites), ttl=self.favorites_ttl)
+                if self.cache:
+                    await self.cache.set(favorites_key, json.dumps(favorites), ttl=self.favorites_ttl)
+                else:
+                    # In-memory fallback
+                    self._in_memory_storage[favorites_key] = {
+                        "data": favorites,
+                        "timestamp": datetime.now(),
+                        "ttl": self.favorites_ttl
+                    }
                 logger.info(f"Updated nickname for VIN {vin} for user {user_id}")
                 return True
             
@@ -313,23 +376,23 @@ class UserDataManager:
         Returns:
             Dictionary with service preference and API keys
         """
-        if not self.cache:
-            return {
-                "service": "NHTSA",  # Default service changed to NHTSA
-                "carsxe_api_key": None,
-                "nhtsa_api_key": None,  # NHTSA doesn't need a key but keeping for consistency
-                "autodev_api_key": None
-            }
-        
         try:
             settings_key = self._get_settings_key(user_id)
-            settings_json = await self.cache.get(settings_key)
+            if self.cache:
+                settings_json = await self.cache.get(settings_key)
+                if settings_json:
+                    settings = json.loads(settings_json)
+                else:
+                    settings = None
+            else:
+                # In-memory fallback
+                settings_data = self._in_memory_storage.get(settings_key, {})
+                settings = settings_data.get("data") if settings_data else None
             
-            if settings_json:
-                settings = json.loads(settings_json)
+            if settings:
                 # Ensure all expected keys exist
                 if "service" not in settings:
-                    settings["service"] = "CarsXE"
+                    settings["service"] = "NHTSA"  # Changed default to NHTSA
                 if "carsxe_api_key" not in settings:
                     settings["carsxe_api_key"] = None
                 if "nhtsa_api_key" not in settings:
@@ -360,14 +423,11 @@ class UserDataManager:
         
         Args:
             user_id: User ID
-            service: Service name (CarsXE or NHTSA)
+            service: Service name (CarsXE, NHTSA, or AutoDev)
             
         Returns:
             True if successful, False otherwise
         """
-        if not self.cache:
-            return False
-        
         try:
             # Get current settings
             settings = await self.get_user_settings(user_id)
@@ -378,7 +438,15 @@ class UserDataManager:
             # Save back to cache
             settings_key = self._get_settings_key(user_id)
             settings_ttl = 365 * 24 * 3600  # 1 year
-            await self.cache.set(settings_key, json.dumps(settings), ttl=settings_ttl)
+            if self.cache:
+                await self.cache.set(settings_key, json.dumps(settings), ttl=settings_ttl)
+            else:
+                # In-memory fallback
+                self._in_memory_storage[settings_key] = {
+                    "data": settings,
+                    "timestamp": datetime.now(),
+                    "ttl": settings_ttl
+                }
             
             logger.info(f"Updated service preference to {service} for user {user_id}")
             return True
@@ -392,15 +460,12 @@ class UserDataManager:
         
         Args:
             user_id: User ID
-            service: Service name (CarsXE or NHTSA)
+            service: Service name (CarsXE, NHTSA, or AutoDev)
             api_key: API key to store
             
         Returns:
             True if successful, False otherwise
         """
-        if not self.cache:
-            return False
-        
         try:
             # Get current settings
             settings = await self.get_user_settings(user_id)
@@ -419,7 +484,15 @@ class UserDataManager:
             # Save back to cache
             settings_key = self._get_settings_key(user_id)
             settings_ttl = 365 * 24 * 3600  # 1 year
-            await self.cache.set(settings_key, json.dumps(settings), ttl=settings_ttl)
+            if self.cache:
+                await self.cache.set(settings_key, json.dumps(settings), ttl=settings_ttl)
+            else:
+                # In-memory fallback
+                self._in_memory_storage[settings_key] = {
+                    "data": settings,
+                    "timestamp": datetime.now(),
+                    "ttl": settings_ttl
+                }
             
             logger.info(f"Updated API key for {service} for user {user_id}")
             return True
