@@ -298,25 +298,27 @@ def _format_autodev_summary(data: Dict[str, Any]) -> str:
         if mpg_highway:
             lines.append(f"**Highway:** {mpg_highway} MPG")
     
-    # Features (limit to first 10 for readability)
+    # Features - display all features
     features = attrs.get("features", [])
     if features:
-        lines.append("\n✨ **FEATURES** (Sample)")
+        lines.append("\n✨ **VEHICLE FEATURES**")
         lines.append("-" * 22)
-        for feature in features[:10]:  # Limit to first 10
+        
+        # Display all features, organized for readability
+        for i, feature in enumerate(features, 1):
             lines.append(f"• {feature}")
-        if len(features) > 10:
-            lines.append(f"... and {len(features) - 10} more features")
+            
+            # Add spacing every 10 items for better readability if there are many features
+            if i % 10 == 0 and i < len(features):
+                lines.append("")  # Add empty line for visual separation
     
-    # Colors (limit to first 5 for readability)
+    # Colors - display all colors
     colors = attrs.get("colors", [])
     if colors:
-        lines.append("\n🎨 **AVAILABLE COLORS** (Sample)")
+        lines.append("\n🎨 **AVAILABLE COLORS**")
         lines.append("-" * 30)
-        for color in colors[:5]:  # Limit to first 5
+        for color in colors:
             lines.append(f"• {color}")
-        if len(colors) > 5:
-            lines.append(f"... and {len(colors) - 5} more colors")
     
     return "\n".join(lines)
 
@@ -724,14 +726,16 @@ def format_features_section(data: Dict[str, Any]) -> str:
     lines = ["🔧 **FEATURES**", "─" * 20]
     
     if is_autodev:
-        # For Auto.dev, show features list
+        # For Auto.dev, show all features
         features = attrs.get("features", [])
         if features:
-            # Show first 15 features
-            for feature in features[:15]:
+            # Display all features with better organization
+            for i, feature in enumerate(features, 1):
                 lines.append(f"• {feature}")
-            if len(features) > 15:
-                lines.append(f"\n... and {len(features) - 15} more features")
+                
+                # Add spacing every 10 items for better readability if there are many features
+                if i % 10 == 0 and i < len(features):
+                    lines.append("")  # Add empty line for visual separation
         else:
             lines.append("_No feature data available_")
     else:

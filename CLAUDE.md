@@ -97,9 +97,12 @@ fly scale vm shared-cpu-1x
    - Excludes invalid characters (I, O, Q)
    - Normalizes VINs to uppercase
 
-6. **Response Formatter** (`vinbot/formatter.py`):
+6. **Response Formatter** (`vinbot/formatter.py` and `vinbot/smart_formatter.py`):
    - Formats NHTSA/Auto.dev responses into human-readable summaries
    - Handles missing fields gracefully
+   - **Displays ALL vehicle features and colors without truncation**
+   - Groups features with visual spacing every 10 items for better readability
+   - Smart formatter provides progressive disclosure levels with mobile optimization
    - Includes raw JSON in collapsible format
 
 ### Deployment Architecture

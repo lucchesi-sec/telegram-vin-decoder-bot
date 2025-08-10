@@ -336,12 +336,17 @@ def _format_detailed_info(
     if is_autodev:
         features = attrs.get("features", [])
         if features:
-            lines.append("\n✨ **Top Features** (Sample)")
-            # Show first 5 features for detailed view
-            for feature in features[:5]:
+            lines.append("\n✨ **Vehicle Features**")
+            # Show all features with organized display
+            for i, feature in enumerate(features, 1):
                 lines.append(f"• {feature}")
-            if len(features) > 5:
-                lines.append(f"• ... and {len(features) - 5} more features")
+                
+                # Add spacing every 8 items for better readability on mobile
+                if mode == DisplayMode.MOBILE and i % 8 == 0 and i < len(features):
+                    lines.append("")  # Add empty line for visual separation
+                # Add spacing every 10 items for desktop
+                elif mode != DisplayMode.MOBILE and i % 10 == 0 and i < len(features):
+                    lines.append("")  # Add empty line for visual separation
     
     # Add performance data
     lines.append("\n🏁 **Performance**")
