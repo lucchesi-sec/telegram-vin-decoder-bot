@@ -1,6 +1,8 @@
 """Main bot application."""
 
+import asyncio
 import logging
+from typing import Optional
 from dependency_injector.wiring import inject, Provide
 from telegram.ext import ApplicationBuilder, CommandHandler, CallbackQueryHandler, MessageHandler, filters
 from src.infrastructure.monitoring.logging_config import setup_logging
@@ -43,6 +45,7 @@ class BotApplication:
         self.message_adapter = message_adapter
         self.keyboard_adapter = keyboard_adapter
         self.application = None
+        self.stop_event: Optional[asyncio.Event] = None
         self.command_handlers = None
         self.callback_handlers = None
     
@@ -154,13 +157,28 @@ class BotApplication:
                 logger.error(f"Failed to connect to Telegram API: {e}")
                 raise
             
-            # Start polling - this will run until stopped
-            logger.info("Bot polling started successfully")
-            await self.application.run_polling(
+            # Initialize the application
+            logger.info("Initializing bot application...")
+            await self.application.initialize()
+            
+            # Start the application
+            logger.info("Starting bot application...")
+            await self.application.start()
+            
+            # Start polling for updates
+            logger.info("Starting update polling...")
+            await self.application.updater.start_polling(
                 allowed_updates=None,  # Receive all update types
-                drop_pending_updates=True,
-                close_loop=False  # Don't close the event loop when done
+                drop_pending_updates=True
             )
+            
+            logger.info("Bot polling started successfully")
+            
+            # Create a stop event to keep the bot running
+            self.stop_event = asyncio.Event()
+            
+            # Wait for the stop event (will be set on shutdown)
+            await self.stop_event.wait()
             logger.info("Bot polling stopped")
         except Exception as e:
             logger.error(f"Error running bot application: {e}", exc_info=True)
@@ -169,8 +187,16 @@ class BotApplication:
     async def shutdown(self) -> None:
         """Shutdown the bot application."""
         try:
+            if self.stop_event:
+                # Signal the run method to stop
+                self.stop_event.set()
+            
             if self.application:
                 logger.info("Shutting down bot application...")
+                # Stop the updater
+                if self.application.updater:
+                    await self.application.updater.stop()
+                # Stop and shutdown the application
                 await self.application.stop()
                 await self.application.shutdown()
                 logger.info("Bot application shut down successfully")
