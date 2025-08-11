@@ -21,20 +21,6 @@ class TelegramID(ValueObject):
 
 
 @dataclass(frozen=True)
-class UserPreferences(ValueObject):
-    """Value object representing user preferences."""
-    
-    preferred_service: str = "NHTSA"
-    autodev_api_key: str = ""
-    nhtsa_api_key: str = ""
-    
-    def __post_init__(self):
-        """Validate user preferences."""
-        # Add validation logic if needed
-        pass
-
-
-@dataclass(frozen=True)
 class SubscriptionTier(ValueObject):
     """Value object representing a user's subscription tier."""
     

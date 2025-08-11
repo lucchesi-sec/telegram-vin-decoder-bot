@@ -162,7 +162,7 @@ class UserApplicationService:
         for event in events:
             await self.event_bus.publish(event)
         
-        self.logger.info(f"Set preferred service to {service} for user: {user.display_name}")
+        self.logger.info(f"Set preferred decoder to {service} for user: {user.display_name}")
         
         return user
     

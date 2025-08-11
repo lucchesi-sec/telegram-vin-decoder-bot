@@ -135,3 +135,22 @@ class Container(containers.DeclarativeContainer):
     keyboard_adapter = providers.Singleton(
         KeyboardAdapter
     )
+    
+    @staticmethod
+    def bootstrap(container):
+        """Bootstrap the container by registering handlers with buses."""
+        from src.application.vehicle.commands import DecodeVINCommand, GetVehicleHistoryQuery
+        
+        # Get bus instances
+        command_bus = container.command_bus()
+        query_bus = container.query_bus()
+        
+        # Register command handlers
+        decode_vin_handler = container.decode_vin_handler()
+        command_bus.register_handler(DecodeVINCommand, decode_vin_handler)
+        
+        # Register query handlers
+        get_vehicle_history_handler = container.get_vehicle_history_handler()
+        query_bus.register_handler(GetVehicleHistoryQuery, get_vehicle_history_handler)
+        
+        logging.getLogger(__name__).info("Handlers registered with buses")

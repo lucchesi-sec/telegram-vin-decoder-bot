@@ -157,28 +157,29 @@ class BotApplication:
                 logger.error(f"Failed to connect to Telegram API: {e}")
                 raise
             
-            # Initialize the application
-            logger.info("Initializing bot application...")
-            await self.application.initialize()
+            # Start polling (this handles initialize, start, and polling)
+            logger.info("Starting bot application with polling...")
             
-            # Start the application
-            logger.info("Starting bot application...")
-            await self.application.start()
+            # Create a stop event for graceful shutdown
+            self.stop_event = asyncio.Event()
             
-            # Start polling for updates
-            logger.info("Starting update polling...")
-            await self.application.updater.start_polling(
-                allowed_updates=None,  # Receive all update types
-                drop_pending_updates=True
+            # Run polling in the background task
+            polling_task = asyncio.create_task(
+                self.application.run_polling(
+                    allowed_updates=None,  # Receive all update types
+                    drop_pending_updates=True,
+                    stop_signals=[]  # We'll handle stop signals ourselves
+                )
             )
             
             logger.info("Bot polling started successfully")
             
-            # Create a stop event to keep the bot running
-            self.stop_event = asyncio.Event()
-            
-            # Wait for the stop event (will be set on shutdown)
-            await self.stop_event.wait()
+            # Wait for either the stop event or the polling task to complete
+            await asyncio.gather(
+                self.stop_event.wait(),
+                polling_task,
+                return_exceptions=True
+            )
             logger.info("Bot polling stopped")
         except Exception as e:
             logger.error(f"Error running bot application: {e}", exc_info=True)
@@ -193,12 +194,8 @@ class BotApplication:
             
             if self.application:
                 logger.info("Shutting down bot application...")
-                # Stop the updater
-                if self.application.updater:
-                    await self.application.updater.stop()
-                # Stop and shutdown the application
+                # Stop the application (run_polling handles the rest)
                 await self.application.stop()
-                await self.application.shutdown()
                 logger.info("Bot application shut down successfully")
         except Exception as e:
             logger.error(f"Error shutting down bot application: {e}")

@@ -84,9 +84,12 @@ class DecodeVINHandler(CommandHandler[DecodeVINCommand, DecodeResult]):
     def _vehicle_to_decode_result(self, vehicle: Vehicle) -> DecodeResult:
         """Convert a vehicle entity to a decode result."""
         return DecodeResult(
-            vin=vehicle.vin,
+            vin=str(vehicle.vin),
             success=True,
-            data=vehicle.attributes,
+            manufacturer=vehicle.attributes.get("manufacturer"),
+            model=vehicle.attributes.get("model"),
+            model_year=vehicle.attributes.get("model_year"),
+            attributes=vehicle.attributes,
             service_used="Unknown"  # This would come from the decode attempt
         )
 

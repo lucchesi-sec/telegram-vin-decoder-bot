@@ -64,7 +64,7 @@ class CommandHandlers:
             vin = " ".join(context.args).strip()
             
             # Get user preferences
-            telegram_id = TelegramID(update.effective_user.id)
+            telegram_id = update.effective_user.id
             user = await self.user_service.get_user_by_telegram_id(telegram_id)
             preferences = user.preferences if user else UserPreferences()
             
@@ -142,7 +142,7 @@ class CommandHandlers:
                 last_name=update.effective_user.last_name
             )
             
-            current_service = user.preferences.preferred_service.value.upper()
+            current_service = user.preferences.preferred_decoder.upper()
             has_api_key = bool(user.preferences.autodev_api_key)
             
             # Build keyboard

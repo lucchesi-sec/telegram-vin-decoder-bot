@@ -69,6 +69,10 @@ async def main():
             "src.presentation.telegram_bot.handlers.callback_handlers"
         ])
         
+        # Bootstrap the container to register handlers with buses
+        logger.info("Bootstrapping container (registering handlers with buses)...")
+        Container.bootstrap(container)
+        
         # Create bot application with dependency injection
         logger.info("Creating bot application...")
         bot_app = BotApplication()

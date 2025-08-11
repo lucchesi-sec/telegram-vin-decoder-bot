@@ -22,16 +22,19 @@ class AutoDevAdapter:
         try:
             data = await self.client.decode_vin(vin)
             return DecodeResult(
-                vin=vin,
+                vin=str(vin),
                 success=True,
-                data=data,
+                manufacturer=data.get("manufacturer"),
+                model=data.get("model"),
+                model_year=data.get("model_year"),
+                attributes=data,
                 service_used=self.client.service_name
             )
         except Exception as e:
             return DecodeResult(
-                vin=vin,
+                vin=str(vin),
                 success=False,
-                data={},
+                attributes={},
                 service_used=self.client.service_name,
                 error_message=str(e)
             )
