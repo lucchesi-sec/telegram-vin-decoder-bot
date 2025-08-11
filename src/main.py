@@ -2,9 +2,12 @@
 
 import asyncio
 import logging
+import os
 import signal
 import sys
 from pathlib import Path
+
+import sentry_sdk
 
 # Add project root to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -19,6 +22,17 @@ logger = logging.getLogger(__name__)
 
 async def main():
     """Main application entry point."""
+    # Initialize Sentry for error monitoring
+    if sentry_dsn := os.getenv("SENTRY_DSN"):
+        sentry_sdk.init(
+            dsn=sentry_dsn,
+            traces_sample_rate=0.1,
+            environment=os.getenv("FLY_APP_NAME", "development"),
+        )
+        logger.info("Sentry monitoring initialized")
+        # Test Sentry integration
+        sentry_sdk.capture_message("Sentry integration test - bot starting", level="info")
+    
     health_server = None
     bot_app = None
     
