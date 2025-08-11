@@ -69,6 +69,10 @@ async def main():
             "src.presentation.telegram_bot.handlers.callback_handlers"
         ])
         
+        # Initialize database if configured
+        logger.info("Initializing database if configured...")
+        Container.initialize_database(container)
+        
         # Bootstrap the container to register handlers with buses
         logger.info("Bootstrapping container (registering handlers with buses)...")
         Container.bootstrap(container)
@@ -148,6 +152,10 @@ def run_sync():
             "src.presentation.telegram_bot.handlers.command_handlers",
             "src.presentation.telegram_bot.handlers.callback_handlers"
         ])
+        
+        # Initialize database if configured
+        logger.info("Initializing database if configured...")
+        Container.initialize_database(container)
         
         # Bootstrap the container to register handlers with buses
         logger.info("Bootstrapping container (registering handlers with buses)...")

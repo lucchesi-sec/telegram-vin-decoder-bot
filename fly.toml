@@ -13,16 +13,16 @@ primary_region = 'ewr'
   min_machines_running = 3
   processes = ['bot']
 
-[[http_service.checks]]
-  interval = "15s"
-  grace_period = "5s"
-  method = "GET"
-  path = "/health"
-  protocol = "http"
-  timeout = "10s"
+# [[http_service.checks]]
+#   interval = "15s"
+#   grace_period = "5s"
+#   method = "GET"
+#   path = "/health"
+#   protocol = "http"
+#   timeout = "10s"
 
 [processes]
-  bot = 'python -m src.main'
+  bot = './entrypoint.sh'
 
 [[vm]]
   memory = '1gb'

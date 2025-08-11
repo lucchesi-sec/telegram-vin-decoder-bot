@@ -2,6 +2,8 @@
 
 import logging
 from dependency_injector import containers, providers
+
+logger = logging.getLogger(__name__)
 from src.config.settings import Settings
 from src.infrastructure.external_services.nhtsa.nhtsa_client import NHTSAClient
 from src.infrastructure.external_services.nhtsa.nhtsa_adapter import NHTSAAdapter
@@ -10,6 +12,10 @@ from src.infrastructure.external_services.autodev.autodev_adapter import AutoDev
 from src.infrastructure.external_services.decoder_factory import DecoderFactory
 from src.infrastructure.persistence.repositories.in_memory_vehicle_repository import InMemoryVehicleRepository
 from src.infrastructure.persistence.repositories.in_memory_user_repository import InMemoryUserRepository
+from src.infrastructure.persistence.repositories.postgresql_user_repository import PostgreSQLUserRepository
+from src.infrastructure.persistence.repositories.postgresql_vehicle_repository import PostgreSQLVehicleRepository
+from src.infrastructure.persistence.models import DatabaseEngine
+from src.infrastructure.persistence.cache import UpstashCache, VehicleCacheRepository
 from src.application.shared.simple_command_bus import SimpleCommandBus
 from src.application.shared.simple_query_bus import SimpleQueryBus
 from src.application.shared.simple_event_bus import SimpleEventBus
@@ -74,14 +80,50 @@ class Container(containers.DeclarativeContainer):
         autodev_adapter=autodev_adapter
     )
     
-    # Repositories
-    vehicle_repository = providers.Singleton(
-        InMemoryVehicleRepository
-    )
+    # Database Engine (conditional)
+    @providers.Singleton
+    def database_engine(settings=settings):
+        """Create database engine if configured."""
+        if settings.database.database_url:
+            # Convert regular PostgreSQL URL to async
+            db_url = settings.database.database_url
+            if db_url.startswith("postgresql://"):
+                db_url = db_url.replace("postgresql://", "postgresql+asyncpg://", 1)
+            return DatabaseEngine(db_url)
+        return None
     
-    user_repository = providers.Singleton(
-        InMemoryUserRepository
-    )
+    # Cache (conditional)
+    @providers.Singleton
+    def upstash_cache(settings=settings):
+        """Create Upstash cache if configured."""
+        if settings.cache.upstash_url and settings.cache.upstash_token:
+            return UpstashCache(
+                redis_url=settings.cache.upstash_url,
+                redis_token=settings.cache.upstash_token.get_secret_value()
+            )
+        return None
+    
+    @providers.Singleton
+    def vehicle_cache_repository(upstash_cache=upstash_cache):
+        """Create vehicle cache repository if cache is available."""
+        if upstash_cache:
+            return VehicleCacheRepository(upstash_cache)
+        return None
+    
+    # Repositories (conditional based on database availability)
+    @providers.Singleton
+    def vehicle_repository(database_engine=database_engine):
+        """Create vehicle repository based on available storage."""
+        if database_engine:
+            return PostgreSQLVehicleRepository(database_engine.async_session_maker)
+        return InMemoryVehicleRepository()
+    
+    @providers.Singleton
+    def user_repository(database_engine=database_engine):
+        """Create user repository based on available storage."""
+        if database_engine:
+            return PostgreSQLUserRepository(database_engine.async_session_maker)
+        return InMemoryUserRepository()
     
     # Event Bus
     event_bus = providers.Singleton(
@@ -135,6 +177,20 @@ class Container(containers.DeclarativeContainer):
     keyboard_adapter = providers.Singleton(
         KeyboardAdapter
     )
+    
+    @staticmethod
+    async def initialize_database(container):
+        """Initialize database if configured."""
+        engine = container.database_engine()
+        if engine:
+            logger.info("Initializing database...")
+            try:
+                # Create tables if they don't exist
+                await engine.create_all()
+                logger.info("Database initialized successfully")
+            except Exception as e:
+                logger.error(f"Failed to initialize database: {e}")
+                raise
     
     @staticmethod
     def bootstrap(container):

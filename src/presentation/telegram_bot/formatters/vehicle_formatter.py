@@ -50,6 +50,11 @@ def format_vehicle_summary(data: Dict[str, Any]) -> str:
     else:
         lines.append("🚗 *Vehicle Information*")
     
+    # VIN - placed right under year/make/model for easy copying
+    vin = attrs.get("vin", "")
+    if vin:
+        lines.append(f"`{vin}`")
+    
     # Add premium badge if applicable
     premium_summary, feature_count = PremiumFeaturesFormatter.format_premium_summary(data)
     premium_badge = PremiumFeaturesFormatter.format_premium_badge(feature_count)
@@ -77,11 +82,6 @@ def format_vehicle_summary(data: Dict[str, Any]) -> str:
     # Add premium features summary if available
     if premium_summary:
         lines.append(f"✨ {premium_summary}")
-    
-    # VIN
-    vin = attrs.get("vin", "")
-    if vin:
-        lines.append(f"\n`{vin}`")
     
     # Basic information
     basic_fields = [

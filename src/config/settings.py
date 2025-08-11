@@ -57,6 +57,20 @@ class DecoderSettings(BaseSettings):
         extra = "ignore"
 
 
+class DatabaseSettings(BaseSettings):
+    """Database settings."""
+
+    database_url: Optional[str] = Field(None, alias="DATABASE_URL")
+    pool_size: int = Field(default=20, alias="DB_POOL_SIZE")
+    max_overflow: int = Field(default=0, alias="DB_MAX_OVERFLOW")
+    pool_recycle: int = Field(default=3600, alias="DB_POOL_RECYCLE")
+    echo_sql: bool = Field(default=False, alias="DB_ECHO_SQL")
+
+    class Config:
+        env_file = ".env"
+        extra = "ignore"
+
+
 class Settings(BaseSettings):
     """Application settings."""
 
@@ -67,6 +81,7 @@ class Settings(BaseSettings):
     telegram: TelegramSettings = Field(default_factory=TelegramSettings)
     cache: CacheSettings = Field(default_factory=CacheSettings)
     decoder: DecoderSettings = Field(default_factory=DecoderSettings)
+    database: DatabaseSettings = Field(default_factory=DatabaseSettings)
 
     class Config:
         env_file = ".env"
