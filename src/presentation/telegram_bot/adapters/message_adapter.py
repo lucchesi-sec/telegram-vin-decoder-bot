@@ -5,6 +5,7 @@ from enum import Enum
 from typing import Dict, Any, Optional, List
 from src.presentation.telegram_bot.formatters.vehicle_formatter import VehicleFormatter
 from src.presentation.telegram_bot.formatters.error_formatter import ErrorFormatter
+from src.presentation.telegram_bot.formatters.premium_features_formatter import PremiumFeaturesFormatter
 
 
 class InformationLevel(Enum):
@@ -252,13 +253,15 @@ class MessageAdapter:
             else:
                 lines.append("• Dimension data not available")
         
-        # Add Auto.dev specific features (first 10 only for detailed view)
+        # Add Auto.dev specific features with premium formatting
         if is_autodev:
-            features = attrs.get("features", [])
-            if features:
-                lines.append("\n✨ **Top Features**")
-                for feature in features[:10]:  # Limit to 10 features
-                    lines.append(f"• {feature}")
+            # Create a data dict for the premium formatter
+            vehicle_data = {"attributes": attrs}
+            features_section = PremiumFeaturesFormatter.format_features_section(
+                PremiumFeaturesFormatter.extract_features(vehicle_data)
+            )
+            if features_section:
+                lines.append(features_section)
         
         # Add performance data
         lines.append("\n🏁 **Performance**")

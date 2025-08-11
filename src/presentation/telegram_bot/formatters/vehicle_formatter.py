@@ -1,7 +1,7 @@
 """Vehicle data formatters for Telegram messages."""
 
 from typing import Dict, Any
-from telegram.constants import ParseMode
+from src.presentation.telegram_bot.formatters.premium_features_formatter import PremiumFeaturesFormatter
 
 
 class VehicleFormatter:
@@ -50,9 +50,15 @@ def format_vehicle_summary(data: Dict[str, Any]) -> str:
     else:
         lines.append("🚗 *Vehicle Information*")
     
+    # Add premium badge if applicable
+    premium_summary, feature_count = PremiumFeaturesFormatter.format_premium_summary(data)
+    premium_badge = PremiumFeaturesFormatter.format_premium_badge(feature_count)
+    if premium_badge:
+        lines.append(premium_badge)
+    
     lines.append("━" * 25)
     
-    # Key specs
+    # Key specs with premium summary
     specs = []
     body = attrs.get("body_type") or attrs.get("body", "")
     fuel = attrs.get("fuel_type", "")
@@ -67,6 +73,10 @@ def format_vehicle_summary(data: Dict[str, Any]) -> str:
     
     if specs:
         lines.append(f"📌 {' • '.join(specs)}")
+    
+    # Add premium features summary if available
+    if premium_summary:
+        lines.append(f"✨ {premium_summary}")
     
     # VIN
     vin = attrs.get("vin", "")
@@ -89,6 +99,13 @@ def format_vehicle_summary(data: Dict[str, Any]) -> str:
                 lines.append("─" * 20)
                 has_basic_info = True
             lines.append(f"*{label}:* {value}")
+    
+    # Add premium features section
+    features_section = PremiumFeaturesFormatter.format_features_section(
+        PremiumFeaturesFormatter.extract_features(data)
+    )
+    if features_section:
+        lines.append(features_section)
     
     return "\n".join(lines)
 
