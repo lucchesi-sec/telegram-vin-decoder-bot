@@ -1,11 +1,9 @@
 """Command handlers for the Telegram bot."""
 
 import logging
-from typing import Optional, Dict, Any
 from telegram import Update
 from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
-from src.domain.user.value_objects.telegram_id import TelegramID
 from src.domain.user.value_objects.user_preferences import UserPreferences
 from src.application.vehicle.services.vehicle_application_service import VehicleApplicationService
 from src.application.user.services.user_application_service import UserApplicationService
@@ -81,17 +79,112 @@ class CommandHandlers:
                     result.model or ""
                 ] if v)
                 
-                response_text = f"✅ *{vehicle_desc}*\n\n"
-                response_text += f"`{result.vin}`\n\n"
+                response_text = f"🚗 *{vehicle_desc}*\n"
+                response_text += "━━━━━━━━━━━━━━━━━━━━\n\n"
+                response_text += f"📋 VIN: `{result.vin}`\n"
+                response_text += f"🔧 Service: {result.service_used}\n\n"
                 
                 # Access attributes from the attributes dictionary
                 attrs = result.attributes or {}
-                if attrs.get("body_type"):
-                    response_text += f"Body Type: {attrs['body_type']}\n"
-                if attrs.get("fuel_type"):
-                    response_text += f"Fuel Type: {attrs['fuel_type']}\n"
-                if attrs.get("transmission"):
-                    response_text += f"Transmission: {attrs['transmission']}\n"
+                
+                # Basic Information Section
+                response_text += "*📊 Basic Information*\n"
+                if attrs.get("make"):
+                    response_text += f"• Make: {attrs['make']}\n"
+                if attrs.get("model"):
+                    response_text += f"• Model: {attrs['model']}\n"
+                if attrs.get("year"):
+                    response_text += f"• Year: {attrs['year']}\n"
+                if attrs.get("trim"):
+                    response_text += f"• Trim: {attrs['trim']}\n"
+                if attrs.get("body_type") or attrs.get("vehicle_style"):
+                    response_text += f"• Body Style: {attrs.get('body_type') or attrs.get('vehicle_style')}\n"
+                if attrs.get("doors"):
+                    response_text += f"• Doors: {attrs['doors']}\n"
+                if attrs.get("vehicle_size"):
+                    response_text += f"• Size: {attrs['vehicle_size']}\n"
+                response_text += "\n"
+                
+                # Engine Information Section
+                has_engine_info = any([
+                    attrs.get("engine"), attrs.get("cylinders"), attrs.get("displacement"),
+                    attrs.get("fuel_type"), attrs.get("horsepower"), attrs.get("torque"),
+                    attrs.get("configuration"), attrs.get("compressor_type")
+                ])
+                
+                if has_engine_info:
+                    response_text += "*🔧 Engine*\n"
+                    if attrs.get("engine"):
+                        response_text += f"• Engine: {attrs['engine']}\n"
+                    if attrs.get("configuration"):
+                        response_text += f"• Configuration: {attrs['configuration']}\n"
+                    if attrs.get("cylinders"):
+                        response_text += f"• Cylinders: {attrs['cylinders']}\n"
+                    if attrs.get("displacement"):
+                        response_text += f"• Displacement: {attrs['displacement']}\n"
+                    if attrs.get("fuel_type"):
+                        response_text += f"• Fuel Type: {attrs['fuel_type']}\n"
+                    if attrs.get("horsepower"):
+                        response_text += f"• Horsepower: {attrs['horsepower']}\n"
+                    if attrs.get("torque"):
+                        response_text += f"• Torque: {attrs['torque']}\n"
+                    if attrs.get("compressor_type"):
+                        response_text += f"• Turbo/Super: {attrs['compressor_type']}\n"
+                    response_text += "\n"
+                
+                # Transmission & Drivetrain Section
+                has_trans_info = any([
+                    attrs.get("transmission"), attrs.get("transmission_type"),
+                    attrs.get("number_of_speeds"), attrs.get("automatic_type"),
+                    attrs.get("drive_type")
+                ])
+                
+                if has_trans_info:
+                    response_text += "*⚙️ Transmission & Drivetrain*\n"
+                    if attrs.get("transmission"):
+                        response_text += f"• Transmission: {attrs['transmission']}\n"
+                    if attrs.get("transmission_type"):
+                        response_text += f"• Type: {attrs['transmission_type']}\n"
+                    if attrs.get("number_of_speeds"):
+                        response_text += f"• Speeds: {attrs['number_of_speeds']}\n"
+                    if attrs.get("automatic_type"):
+                        response_text += f"• Auto Type: {attrs['automatic_type']}\n"
+                    if attrs.get("drive_type"):
+                        response_text += f"• Drive Type: {attrs['drive_type']}\n"
+                    response_text += "\n"
+                
+                # Fuel Economy Section
+                if attrs.get("mpg_city") or attrs.get("mpg_highway"):
+                    response_text += "*⛽ Fuel Economy*\n"
+                    if attrs.get("mpg_city"):
+                        response_text += f"• City: {attrs['mpg_city']} MPG\n"
+                    if attrs.get("mpg_highway"):
+                        response_text += f"• Highway: {attrs['mpg_highway']} MPG\n"
+                    if attrs.get("epa_class"):
+                        response_text += f"• EPA Class: {attrs['epa_class']}\n"
+                    response_text += "\n"
+                
+                # Features Section (if available)
+                if attrs.get("features") and isinstance(attrs["features"], list):
+                    response_text += "*✨ Features*\n"
+                    for feature in attrs["features"][:10]:  # Limit to first 10 features
+                        response_text += f"• {feature}\n"
+                    if len(attrs["features"]) > 10:
+                        response_text += f"• ...and {len(attrs['features']) - 10} more\n"
+                    response_text += "\n"
+                
+                # Colors Section (if available)
+                if attrs.get("colors") and isinstance(attrs["colors"], list):
+                    response_text += "*🎨 Available Colors*\n"
+                    for color in attrs["colors"][:5]:  # Limit to first 5 colors
+                        response_text += f"• {color}\n"
+                    if len(attrs["colors"]) > 5:
+                        response_text += f"• ...and {len(attrs['colors']) - 5} more\n"
+                    response_text += "\n"
+                
+                # Trim message if too long for Telegram (4096 char limit)
+                if len(response_text) > 4000:
+                    response_text = response_text[:3997] + "..."
                 
                 await update.message.reply_text(
                     response_text,
