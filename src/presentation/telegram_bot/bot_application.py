@@ -141,40 +141,62 @@ class BotApplication:
                 "Sorry, an error occurred. Please try again later."
             )
     
-    def run(self) -> None:
-        """Run the bot application (synchronous version)."""
+    async def run_async(self) -> None:
+        """Run the bot application (async version)."""
         try:
             if not self.application:
                 logger.info("Initializing bot application...")
-                # We need to run initialize in a sync context
-                import asyncio
-                loop = asyncio.new_event_loop()
-                asyncio.set_event_loop(loop)
-                loop.run_until_complete(self.initialize())
-                loop.close()
+                await self.initialize()
             
             logger.info("Starting bot polling...")
             # Test bot connection first
             try:
-                import asyncio
-                loop = asyncio.new_event_loop()
-                asyncio.set_event_loop(loop)
-                bot_info = loop.run_until_complete(self.application.bot.get_me())
+                bot_info = await self.application.bot.get_me()
                 logger.info(f"Bot connected successfully: @{bot_info.username} ({bot_info.first_name})")
-                loop.close()
             except Exception as e:
                 logger.error(f"Failed to connect to Telegram API: {e}")
                 raise
             
-            logger.info("Starting bot with run_polling...")
-            # Use run_polling which handles its own event loop
-            self.application.run_polling(
+            logger.info("Starting bot with initialize and start...")
+            # Initialize and start the application
+            await self.application.initialize()
+            await self.application.start()
+            
+            # Start polling
+            logger.info("Starting bot polling...")
+            await self.application.updater.start_polling(
                 allowed_updates=None,
-                drop_pending_updates=True,
-                stop_signals=None  # Let the main process handle signals
+                drop_pending_updates=True
             )
             
+            # Keep the bot running
+            logger.info("Bot is now running. Waiting for stop signal...")
+            self.stop_event = asyncio.Event()
+            await self.stop_event.wait()
+            
+            # Stop polling
+            logger.info("Stopping bot polling...")
+            await self.application.updater.stop()
+            await self.application.stop()
+            await self.application.shutdown()
+            
             logger.info("Bot polling stopped")
+        except Exception as e:
+            logger.error(f"Error running bot application: {e}", exc_info=True)
+            raise
+    
+    def run(self) -> None:
+        """Run the bot application (synchronous version for backward compatibility)."""
+        try:
+            # Check if we're already in an async context
+            try:
+                _ = asyncio.get_running_loop()
+                # If there's already a loop, we can't use asyncio.run()
+                logger.error("Cannot call run() from within an async context. Use run_async() instead.")
+                raise RuntimeError("Cannot call run() from within an async context")
+            except RuntimeError:
+                # No running loop, safe to use asyncio.run()
+                asyncio.run(self.run_async())
         except Exception as e:
             logger.error(f"Error running bot application: {e}", exc_info=True)
             raise
@@ -184,6 +206,10 @@ class BotApplication:
         try:
             logger.info("Shutting down bot application...")
             
+            if self.stop_event:
+                # Signal the async run to stop
+                self.stop_event.set()
+                
             if self.application:
                 # The application should handle its own shutdown when run_polling stops
                 logger.info("Bot application will shut down automatically")

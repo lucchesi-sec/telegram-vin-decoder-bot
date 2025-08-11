@@ -79,7 +79,7 @@ async def main():
         
         # Run the bot - this will block until shutdown
         logger.info("Starting bot application...")
-        bot_app.run()
+        await bot_app.run_async()
         
         return True
         
