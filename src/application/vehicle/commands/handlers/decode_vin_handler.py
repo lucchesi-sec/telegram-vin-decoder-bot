@@ -38,32 +38,51 @@ class DecodeVINHandler(CommandHandler[DecodeVINCommand, DecodeResult]):
                 # Convert vehicle to decode result
                 return self._vehicle_to_decode_result(existing)
             
-            # Select appropriate decoder based on user preferences
-            decoder = self.decoder_factory.get_decoder(command.user_preferences)
+            # Try auto.dev decoder first, fallback to NHTSA if it fails
+            primary_decoder = self.decoder_factory.autodev_adapter
+            fallback_decoder = self.decoder_factory.nhtsa_adapter
             
-            # Perform decoding with circuit breaker pattern
-            try:
-                raw_result = await decoder.decode(command.vin)
-                # Create vehicle from decode result
-                vehicle = self._create_vehicle_from_result(command.vin, raw_result)
-                await self.vehicle_repo.save(vehicle)
-                
-                # Publish domain events
-                for event in vehicle.collect_events():
-                    await self.event_bus.publish(event)
-                
-                return self._vehicle_to_decode_result(vehicle)
-            except Exception as e:
-                # Handle decoder exception
-                self.logger.error(f"Decoding failed for VIN {command.vin}: {e}")
-                # Publish decode failed event
-                await self.event_bus.publish(DecodeFailedEvent(
-                    vin=command.vin.value,
-                    service_used=decoder.service_name,
-                    error_message=str(e),
-                    failed_at=datetime.utcnow()
-                ))
-                raise ApplicationException("Unable to decode VIN", cause=e)
+            # Perform decoding with fallback pattern
+            raw_result = None
+            decoder_used = None
+            
+            # Try primary decoder (auto.dev)
+            if primary_decoder.client.api_key:
+                try:
+                    self.logger.info(f"Attempting to decode VIN {command.vin} with auto.dev")
+                    raw_result = await primary_decoder.decode(command.vin)
+                    decoder_used = primary_decoder
+                    self.logger.info(f"Successfully decoded VIN {command.vin} with auto.dev")
+                except Exception as e:
+                    self.logger.warning(f"auto.dev decode failed for VIN {command.vin}: {e}, falling back to NHTSA")
+            
+            # Fallback to NHTSA if auto.dev failed or is not configured
+            if raw_result is None:
+                try:
+                    self.logger.info(f"Attempting to decode VIN {command.vin} with NHTSA")
+                    raw_result = await fallback_decoder.decode(command.vin)
+                    decoder_used = fallback_decoder
+                    self.logger.info(f"Successfully decoded VIN {command.vin} with NHTSA")
+                except Exception as e:
+                    # Both decoders failed
+                    self.logger.error(f"All decoders failed for VIN {command.vin}: {e}")
+                    await self.event_bus.publish(DecodeFailedEvent(
+                        vin=command.vin.value,
+                        service_used="auto.dev/NHTSA",
+                        error_message=str(e),
+                        failed_at=datetime.utcnow()
+                    ))
+                    raise ApplicationException("Unable to decode VIN", cause=e)
+            
+            # Create vehicle from decode result
+            vehicle = self._create_vehicle_from_result(command.vin, raw_result)
+            await self.vehicle_repo.save(vehicle)
+            
+            # Publish domain events
+            for event in vehicle.collect_events():
+                await self.event_bus.publish(event)
+            
+            return self._vehicle_to_decode_result(vehicle)
         except Exception as e:
             self.logger.error(f"Error handling decode VIN command: {e}")
             raise

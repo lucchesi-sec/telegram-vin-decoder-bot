@@ -166,39 +166,6 @@ class UserApplicationService:
         
         return user
     
-    async def set_user_api_key(
-        self,
-        telegram_id: int,
-        api_key: Optional[str]
-    ) -> Optional[User]:
-        """Set user's API key for AutoDev service.
-        
-        Args:
-            telegram_id: Telegram user ID
-            api_key: API key for AutoDev
-            
-        Returns:
-            Updated user if found, None otherwise
-        """
-        user = await self.get_user_by_telegram_id(telegram_id)
-        if not user:
-            return None
-        
-        # Update API key
-        new_prefs = user.preferences.with_api_key(api_key)
-        user.update_preferences(new_prefs)
-        
-        await self.user_repository.save(user)
-        
-        # Publish domain events
-        events = user.collect_events()
-        for event in events:
-            await self.event_bus.publish(event)
-        
-        self.logger.info(f"Updated API key for user: {user.display_name}")
-        
-        return user
-    
     async def add_to_user_history(
         self,
         telegram_id: int,

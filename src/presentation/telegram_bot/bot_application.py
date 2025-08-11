@@ -3,17 +3,27 @@
 import asyncio
 import logging
 from typing import Optional
-from dependency_injector.wiring import inject, Provide
-from telegram.ext import ApplicationBuilder, CommandHandler, CallbackQueryHandler, MessageHandler, filters
-from src.infrastructure.monitoring.logging_config import setup_logging
-from src.config.settings import Settings
+
+from dependency_injector.wiring import Provide, inject
+from telegram.ext import (ApplicationBuilder, CallbackQueryHandler,
+                          CommandHandler, MessageHandler, filters)
+
+from src.application.user.services.user_application_service import \
+    UserApplicationService
+from src.application.vehicle.services.vehicle_application_service import \
+    VehicleApplicationService
 from src.config.dependencies import Container
-from src.presentation.telegram_bot.handlers.command_handlers import CommandHandlers
-from src.presentation.telegram_bot.handlers.callback_handlers import CallbackHandlers
-from src.application.vehicle.services.vehicle_application_service import VehicleApplicationService
-from src.application.user.services.user_application_service import UserApplicationService
-from src.presentation.telegram_bot.adapters.message_adapter import MessageAdapter
-from src.presentation.telegram_bot.adapters.keyboard_adapter import KeyboardAdapter
+from src.config.settings import Settings
+from src.infrastructure.monitoring.logging_config import setup_logging
+from src.presentation.telegram_bot.adapters.keyboard_adapter import \
+    KeyboardAdapter
+from src.presentation.telegram_bot.adapters.message_adapter import \
+    MessageAdapter
+from src.presentation.telegram_bot.handlers.callback_handlers import \
+    CallbackHandlers
+from src.presentation.telegram_bot.handlers.command_handlers import \
+    CommandHandlers
+from src.presentation.telegram_bot.utils.vin_validator import VINValidator
 
 logger = logging.getLogger(__name__)
 
@@ -143,20 +153,44 @@ class BotApplication:
             
             text = update.message.text.strip()
             
-            # Check if it looks like a VIN (17 characters)
-            if len(text) == 17 and text.isalnum():
+            # Try to extract VIN from the text
+            extracted_vin = VINValidator.extract_vin(text)
+            
+            if extracted_vin:
+                # Valid VIN found! Automatically decode it
+                logger.info(f"Auto-detected VIN: {extracted_vin}")
+                
+                # Show a quick acknowledgment
+                processing_msg = await update.message.reply_text(
+                    f"🔍 VIN detected: `{extracted_vin}`\n⏳ Decoding...",
+                    parse_mode="Markdown"
+                )
+                
                 # Pass to the VIN handler
-                context.args = [text]
+                context.args = [extracted_vin]
                 await self.command_handlers.vin(update, context)
+                
+                # Delete the processing message
+                try:
+                    await processing_msg.delete()
+                except Exception:
+                    pass  # Ignore if message already deleted
+                    
+            elif VINValidator.looks_like_vin_attempt(text):
+                # User seems to be trying to enter a VIN but it's invalid
+                await update.message.reply_text(
+                    "❌ That looks like a VIN, but it's not valid.\n\n"
+                    "VINs must be exactly 17 characters and cannot contain I, O, or Q.\n"
+                    "Please check and try again."
+                )
             else:
-                # Check if this is a settings-related input (e.g., API key)
-                if hasattr(context, 'user_data') and context.user_data.get('awaiting_api_key'):
-                    # Handle API key input
-                    await self.callback_handlers.handle_api_key_input(update, context, text)
-                else:
-                    await update.message.reply_text(
-                        "I expected a 17-character VIN. Use /vin <VIN> or send the VIN directly."
-                    )
+                # Not a VIN - provide helpful guidance
+                await update.message.reply_text(
+                    "💡 Send me a 17-character VIN to decode it automatically!\n\n"
+                    "You can also use:\n"
+                    "• /vin <VIN> to decode a specific VIN\n"
+                    "• /help for more commands"
+                )
         except Exception as e:
             logger.error(f"Error handling text message: {e}")
             await update.message.reply_text(

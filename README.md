@@ -4,6 +4,7 @@ A Telegram bot that decodes Vehicle Identification Numbers (VINs) using a Domain
 
 ## Features
 
+- **Automatic VIN Detection**: Just paste a VIN and the bot automatically detects and decodes it!
 - Decodes VINs using official databases (NHTSA, Auto.dev)
 - Domain-Driven Design with clear bounded contexts
 - Clean architecture with separation of concerns
@@ -65,13 +66,23 @@ python -m src.main
 
 The bot starts polling. In Telegram, send your bot a message with a 17-character VIN (e.g. `/vin 1HGCM82633A004352`).
 
-## Commands
+## Usage
 
-- `/start` — brief intro and instructions
-- `/help` — usage help
-- `/vin <VIN>` — decode a VIN directly
+### Automatic VIN Detection (NEW!)
+Simply paste a VIN anywhere in your message and the bot will automatically detect and decode it:
+- `1HGBH41JXMN109186` - Just the VIN
+- `Check this VIN: 1HGBH41JXMN109186` - VIN in a sentence
+- `Can you decode 1HGBH41JXMN109186 for me?` - Natural language
 
-You can also just send a plain 17-character VIN and the bot will decode it.
+The bot intelligently detects 17-character VINs and validates them before decoding.
+
+### Commands
+
+- `/start` — Welcome message with interactive menu
+- `/help` — Usage help and examples
+- `/vin <VIN>` — Decode a VIN using the command
+- `/settings` — View bot configuration
+- `/history` — View your recent VIN searches
 
 ## Services
 
