@@ -48,7 +48,7 @@ class Container(containers.DeclarativeContainer):
     # External Services - AutoDev
     autodev_client = providers.Singleton(
         lambda: AutoDevClient(
-            api_key=Container.settings().decoder.autodev_api_key.get_secret_value() if Container.settings().decoder.autodev_api_key else None,
+            api_key=Container.settings().decoder.autodev_api_key.get_secret_value() if Container.settings().decoder.autodev_api_key else "",
             timeout=Container.settings().decoder.timeout
         )
     )
