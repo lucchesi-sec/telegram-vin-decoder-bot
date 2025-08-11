@@ -74,16 +74,18 @@ class CommandHandlers:
             # Format and send response
             # This would use the message adapter in a full implementation
             if result.success:
-                attrs = result.data.get("attributes", {})
+                # Build vehicle description from direct attributes
                 vehicle_desc = " ".join(str(v) for v in [
-                    attrs.get("year", ""),
-                    attrs.get("make", ""),
-                    attrs.get("model", "")
+                    result.model_year or "",
+                    result.manufacturer or "",
+                    result.model or ""
                 ] if v)
                 
                 response_text = f"✅ *{vehicle_desc}*\n\n"
-                response_text += f"`{result.vin.value}`\n\n"
+                response_text += f"`{result.vin}`\n\n"
                 
+                # Access attributes from the attributes dictionary
+                attrs = result.attributes or {}
                 if attrs.get("body_type"):
                     response_text += f"Body Type: {attrs['body_type']}\n"
                 if attrs.get("fuel_type"):
