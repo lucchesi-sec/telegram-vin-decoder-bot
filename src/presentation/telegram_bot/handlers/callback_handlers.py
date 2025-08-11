@@ -57,6 +57,8 @@ class CallbackHandlers:
                 await self._handle_refresh(update, context, data)
             elif data == "close":
                 await self._handle_close(update, context)
+            elif data.startswith("action:"):
+                await self._handle_action_button(update, context, data)
             else:
                 logger.warning(f"Unknown callback data: {data}")
         except Exception as e:
@@ -81,16 +83,23 @@ class CallbackHandlers:
             service=service
         )
         
+        # Add back button
+        from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+        keyboard = [[InlineKeyboardButton("↩️ Back", callback_data="action:settings")]]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        
         if user:
             service_display = service.upper()
             await query.edit_message_text(
                 f"✅ *Service Updated*\n\n"
                 f"Your preferred decoder service is now: *{service_display}*",
-                parse_mode=ParseMode.MARKDOWN
+                parse_mode=ParseMode.MARKDOWN,
+                reply_markup=reply_markup
             )
         else:
             await query.edit_message_text(
-                "❌ Failed to update service preference. Please try again."
+                "❌ Failed to update service preference. Please try again.",
+                reply_markup=reply_markup
             )
     
     async def _handle_api_key_setup(
@@ -104,11 +113,17 @@ class CallbackHandlers:
         # Set flag in user data to expect API key input
         context.user_data['awaiting_api_key'] = True
         
+        # Add back button
+        from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+        keyboard = [[InlineKeyboardButton("↩️ Back", callback_data="action:settings")]]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        
         await query.edit_message_text(
-            "🔑 *API Key Setup*\n\n"
-            "Please send your Auto.dev API key in the next message.\n\n"
+            "🔑 *API Key Setup*\\n\\n"
+            "Please send your Auto.dev API key in the next message.\\n\\n"
             "Your API key will be stored securely and used only for VIN decoding.",
-            parse_mode=ParseMode.MARKDOWN
+            parse_mode=ParseMode.MARKDOWN,
+            reply_markup=reply_markup
         )
     
     async def _handle_clear_api_key(
@@ -125,15 +140,22 @@ class CallbackHandlers:
             api_key=None
         )
         
+        # Add back button
+        from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+        keyboard = [[InlineKeyboardButton("↩️ Back", callback_data="action:settings")]]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        
         if user:
             await query.edit_message_text(
                 "✅ *API Key Cleared*\n\n"
                 "Your Auto.dev API key has been removed.",
-                parse_mode=ParseMode.MARKDOWN
+                parse_mode=ParseMode.MARKDOWN,
+                reply_markup=reply_markup
             )
         else:
             await query.edit_message_text(
-                "❌ Failed to clear API key. Please try again."
+                "❌ Failed to clear API key. Please try again.",
+                reply_markup=reply_markup
             )
     
     async def handle_api_key_input(
@@ -152,6 +174,14 @@ class CallbackHandlers:
             api_key=api_key
         )
         
+        # Add action buttons
+        from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+        keyboard = [
+            [InlineKeyboardButton("🔍 Decode VIN", callback_data="action:decode_vin")],
+            [InlineKeyboardButton("↩️ Back", callback_data="action:settings")]
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        
         if user:
             # Also update service preference to AutoDev
             await self.user_service.set_preferred_service(
@@ -164,11 +194,13 @@ class CallbackHandlers:
                 "Your Auto.dev API key has been saved and your preferred service "
                 "has been set to Auto.dev.\n\n"
                 "You can now decode VINs using the Auto.dev service!",
-                parse_mode=ParseMode.MARKDOWN
+                parse_mode=ParseMode.MARKDOWN,
+                reply_markup=reply_markup
             )
         else:
             await update.message.reply_text(
-                "❌ Failed to save API key. Please try again."
+                "❌ Failed to save API key. Please try again.",
+                reply_markup=reply_markup
             )
     
     async def _handle_refresh(
@@ -204,15 +236,19 @@ class CallbackHandlers:
             response_text = f"✅ *Refreshed Data*\n\nVIN: `{vin}`\n\nData has been refreshed!"
             
             # Add keyboard
-            keyboard = InlineKeyboardMarkup([
+            from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+            keyboard = [
                 [InlineKeyboardButton("🔄 Refresh", callback_data=f"refresh:{vin}")],
+                [InlineKeyboardButton("📋 Decode Another", callback_data="action:decode_vin")],
                 [InlineKeyboardButton("❌ Close", callback_data="close")]
-            ])
+            ]
+            
+            reply_markup = InlineKeyboardMarkup(keyboard)
             
             await query.edit_message_text(
                 response_text,
                 parse_mode=ParseMode.MARKDOWN,
-                reply_markup=keyboard
+                reply_markup=reply_markup
             )
         except Exception as e:
             logger.error(f"Error in refresh callback: {e}")
@@ -284,3 +320,76 @@ class CallbackHandlers:
             parse_mode=ParseMode.MARKDOWN,
             reply_markup=reply_markup
         )
+    
+    async def _handle_action_button(
+        self,
+        update: Update,
+        context: ContextTypes.DEFAULT_TYPE,
+        data: str
+    ) -> None:
+        """Handle action button callbacks."""
+        query = update.callback_query
+        action = data.split(":")[1]  # Extract action name
+        
+        try:
+            if action == "decode_vin":
+                # Prompt user to send a VIN
+                await query.edit_message_text(
+                    "🔢 *Decode VIN*\n\n"
+                    "Please send me a 17-character VIN directly, or use the /vin command.\n\n"
+                    "Example: 1HGCM826XA0042787"
+                )
+            elif action == "settings":
+                # Show settings menu
+                await self._show_settings_menu(update, context)
+            elif action == "help":
+                # Show help text
+                help_text = (
+                    "🤖 *VIN Decoder Bot Commands*\n\n"
+                    "/start - Show welcome message\n"
+                    "/vin <VIN> - Decode a VIN\n"
+                    "/settings - Configure decoder service\n"
+                    "/history - View your recent VIN searches\n"
+                    "/help - Show this help message\n\n"
+                    "You can also just send a 17-character VIN directly!"
+                )
+                
+                # Add back button
+                from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+                keyboard = [[InlineKeyboardButton("↩️ Back", callback_data="action:start")]]
+                reply_markup = InlineKeyboardMarkup(keyboard)
+                
+                await query.edit_message_text(
+                    help_text,
+                    parse_mode=ParseMode.MARKDOWN,
+                    reply_markup=reply_markup
+                )
+            elif action == "start":
+                # Show start menu again
+                from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+                
+                welcome_text = (
+                    "🚗 *Welcome to VIN Decoder Bot!*\n\n"
+                    "I can decode Vehicle Identification Numbers (VINs) using official databases.\n\n"
+                    "Select an option below to get started:"
+                )
+                
+                # Create action buttons
+                keyboard = [
+                    [InlineKeyboardButton("🔍 Decode VIN", callback_data="action:decode_vin")],
+                    [InlineKeyboardButton("⚙️ Settings", callback_data="action:settings")],
+                    [InlineKeyboardButton("📖 Help", callback_data="action:help")]
+                ]
+                
+                reply_markup = InlineKeyboardMarkup(keyboard)
+                
+                await query.edit_message_text(
+                    welcome_text,
+                    parse_mode=ParseMode.MARKDOWN,
+                    reply_markup=reply_markup
+                )
+        except Exception as e:
+            logger.error(f"Error in action button handler: {e}")
+            await query.edit_message_text(
+                "Sorry, an error occurred. Please try again later."
+            )

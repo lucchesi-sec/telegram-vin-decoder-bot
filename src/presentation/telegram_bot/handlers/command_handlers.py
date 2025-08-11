@@ -31,20 +31,27 @@ class CommandHandlers:
     async def start(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         """Handle the /start command."""
         try:
+            from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+            
             welcome_text = (
                 "🚗 *Welcome to VIN Decoder Bot!*\n\n"
                 "I can decode Vehicle Identification Numbers (VINs) using official databases.\n\n"
-                "*How to use:*\n"
-                "• Send me a 17-character VIN directly\n"
-                "• Use /vin <VIN> command\n\n"
-                "*Other commands:*\n"
-                "/help - Show all commands\n"
-                "/settings - Configure decoder service\n"
+                "Select an option below to get started:"
             )
+            
+            # Create action buttons
+            keyboard = [
+                [InlineKeyboardButton("🔍 Decode VIN", callback_data="action:decode_vin")],
+                [InlineKeyboardButton("⚙️ Settings", callback_data="action:settings")],
+                [InlineKeyboardButton("📖 Help", callback_data="action:help")]
+            ]
+            
+            reply_markup = InlineKeyboardMarkup(keyboard)
             
             await update.message.reply_text(
                 welcome_text,
-                parse_mode=ParseMode.MARKDOWN
+                parse_mode=ParseMode.MARKDOWN,
+                reply_markup=reply_markup
             )
         except Exception as e:
             logger.error(f"Error in start command: {e}")
@@ -91,18 +98,42 @@ class CommandHandlers:
                 # Add service information
                 response_text += f"\n\n🔧 _Decoded by {result.service_used}_"
                 
+                # Add action buttons
+                from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+                keyboard = [
+                    [
+                        InlineKeyboardButton("🔄 Refresh", callback_data=f"refresh:{result.vin}"),
+                        InlineKeyboardButton("📋 Decode Another", callback_data="action:decode_vin")
+                    ],
+                    [
+                        InlineKeyboardButton("⚙️ Settings", callback_data="action:settings"),
+                        InlineKeyboardButton("❌ Close", callback_data="close")
+                    ]
+                ]
+                reply_markup = InlineKeyboardMarkup(keyboard)
+                
                 # Trim message if too long for Telegram (4096 char limit)
                 if len(response_text) > 4000:
                     response_text = response_text[:3997] + "..."
                 
                 await update.message.reply_text(
                     response_text,
-                    parse_mode=ParseMode.MARKDOWN
+                    parse_mode=ParseMode.MARKDOWN,
+                    reply_markup=reply_markup
                 )
             else:
+                # Add action buttons for error case
+                from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+                keyboard = [
+                    [InlineKeyboardButton("📋 Try Again", callback_data="action:decode_vin")],
+                    [InlineKeyboardButton("❓ Help", callback_data="action:help")]
+                ]
+                reply_markup = InlineKeyboardMarkup(keyboard)
+                
                 await update.message.reply_text(
                     f"❌ *Error*\n\nUnable to decode VIN: {result.error_message}",
-                    parse_mode=ParseMode.MARKDOWN
+                    parse_mode=ParseMode.MARKDOWN,
+                    reply_markup=reply_markup
                 )
         except Exception as e:
             logger.error(f"Error in vin command: {e}")
@@ -113,6 +144,8 @@ class CommandHandlers:
     async def help(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         """Handle the /help command."""
         try:
+            from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+            
             help_text = (
                 "🤖 *VIN Decoder Bot Commands*\n\n"
                 "/start - Show welcome message\n"
@@ -123,9 +156,14 @@ class CommandHandlers:
                 "You can also just send a 17-character VIN directly!"
             )
             
+            # Add back button
+            keyboard = [[InlineKeyboardButton("↩️ Back", callback_data="action:start")]]
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            
             await update.message.reply_text(
                 help_text,
-                parse_mode=ParseMode.MARKDOWN
+                parse_mode=ParseMode.MARKDOWN,
+                reply_markup=reply_markup
             )
         except Exception as e:
             logger.error(f"Error in help command: {e}")
@@ -166,6 +204,11 @@ class CommandHandlers:
                     InlineKeyboardButton("🔑 Set API Key", callback_data="settings:api_key")
                 ])
             
+            # Add back button
+            keyboard.append([
+                InlineKeyboardButton("↩️ Back", callback_data="action:start")
+            ])
+            
             reply_markup = InlineKeyboardMarkup(keyboard)
             
             settings_text = (
@@ -189,18 +232,28 @@ class CommandHandlers:
     async def history(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         """Handle the /history command."""
         try:
+            from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+            
             # Get user history
             history = await self.user_service.get_user_history(
                 telegram_id=update.effective_user.id,
                 limit=10
             )
             
+            # Add action buttons
+            keyboard = [
+                [InlineKeyboardButton("🔍 Decode VIN", callback_data="action:decode_vin")],
+                [InlineKeyboardButton("↩️ Back", callback_data="action:start")]
+            ]
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            
             if not history:
                 await update.message.reply_text(
                     "📋 *Search History*\n\n"
                     "You haven't searched for any VINs yet.\n"
                     "Send a VIN to get started!",
-                    parse_mode=ParseMode.MARKDOWN
+                    parse_mode=ParseMode.MARKDOWN,
+                    reply_markup=reply_markup
                 )
                 return
             
@@ -217,7 +270,8 @@ class CommandHandlers:
             
             await update.message.reply_text(
                 history_text,
-                parse_mode=ParseMode.MARKDOWN
+                parse_mode=ParseMode.MARKDOWN,
+                reply_markup=reply_markup
             )
         except Exception as e:
             logger.error(f"Error in history command: {e}")

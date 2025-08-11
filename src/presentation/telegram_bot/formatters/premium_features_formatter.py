@@ -88,17 +88,17 @@ class PremiumFeaturesFormatter:
                 category_title = category.capitalize()
                 lines.append(f"\n{icon} *{category_title}*")
                 
-                # Format features in this category
-                for feature in categorized[category][:5]:  # Limit to 5 per category
+                # Format features in this category - show ALL features
+                for feature in categorized[category]:  # Remove the [:5] limit
                     # Truncate long feature names
                     if len(feature) > 40:
                         feature = feature[:37] + "..."
                     lines.append(f"  • {feature}")
         
-        # Add feature count summary
+        # Add total feature count summary
         total_features = len(features)
-        if total_features > 15:
-            lines.append(f"\n_...and {total_features - 15} more premium features_")
+        if total_features > 0:
+            lines.append(f"\n✨ _Total: {total_features} premium features_")
         
         return "\n".join(lines)
     

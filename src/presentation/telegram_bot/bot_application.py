@@ -89,6 +89,10 @@ class BotApplication:
             logger.info("Setting up handlers...")
             await self._setup_handlers()
             
+            # Set bot commands for slash command suggestions
+            logger.info("Setting up bot commands...")
+            await self._set_bot_commands()
+            
             logger.info("Bot application initialized successfully")
         except Exception as e:
             logger.error(f"Error initializing bot application: {e}", exc_info=True)
@@ -112,6 +116,24 @@ class BotApplication:
         )
         
         logger.info("Handlers set up successfully")
+    
+    async def _set_bot_commands(self) -> None:
+        """Set bot commands for slash command suggestions."""
+        from telegram import BotCommand
+        
+        commands = [
+            BotCommand("start", "Show welcome message and options"),
+            BotCommand("vin", "Decode a VIN number"),
+            BotCommand("settings", "Configure decoder service and API keys"),
+            BotCommand("history", "View your recent VIN searches"),
+            BotCommand("help", "Show help and available commands")
+        ]
+        
+        try:
+            await self.application.bot.set_my_commands(commands)
+            logger.info("Bot commands set successfully")
+        except Exception as e:
+            logger.error(f"Error setting bot commands: {e}")
     
     async def _handle_text_message(self, update, context) -> None:
         """Handle direct text messages (potential VINs)."""

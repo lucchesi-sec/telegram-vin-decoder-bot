@@ -158,8 +158,11 @@ class TestPremiumFeaturesFormatter:
         safety_lines = [line for line in lines if line.strip().startswith("•")]
         assert len(safety_lines) <= 5
     
-    def test_format_features_section_shows_more_indicator(self):
-        """Test that a 'more features' indicator is shown for many features."""
+    def test_format_features_section_shows_total_count(self):
+        """Test that total feature count is shown for all features."""
         features = ["Feature " + str(i) for i in range(20)]
         result = PremiumFeaturesFormatter.format_features_section(features)
-        assert "more premium features" in result
+        assert "Total: 20 premium features" in result
+        # Verify all features are shown, not truncated
+        for i in range(20):
+            assert f"Feature {i}" in result
