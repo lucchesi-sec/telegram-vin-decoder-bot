@@ -8,8 +8,8 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 COPY requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY vinbot ./vinbot
+COPY src ./src
 
 # Copy env at runtime via --env-file; don't bake secrets into image
 
-CMD ["python", "-m", "vinbot"]
+CMD ["python", "-m", "src.main"]

@@ -1,11 +1,18 @@
 #!/usr/bin/env python3
-"""
-Main entry point for the Telegram VIN decoder bot.
-"""
+"""Legacy entry point retained for compatibility; forwards to src/main.py."""
 
 import logging
 import sys
-from vinbot.bot import run
+from pathlib import Path
+
+
+def _forward_to_src_main() -> int:
+    sys.path.insert(0, str(Path(__file__).parent))
+    from src.main import main  # type: ignore
+    import asyncio
+    asyncio.run(main())
+    return 0
+
 
 logging.basicConfig(
     level=logging.INFO,
@@ -14,7 +21,7 @@ logging.basicConfig(
 
 if __name__ == "__main__":
     try:
-        run()
+        raise SystemExit(_forward_to_src_main())
     except KeyboardInterrupt:
         logging.info("Bot stopped by user")
         sys.exit(0)

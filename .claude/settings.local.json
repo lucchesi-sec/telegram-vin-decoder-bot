@@ -5,7 +5,9 @@
       "mcp__context7__get-library-docs",
       "mcp__smart-tree__quick_tree",
       "mcp__desktop-commander__start_process",
-      "mcp__desktop-commander__move_file"
+      "mcp__desktop-commander__move_file",
+      "mcp__smart-tree__analyze_directory",
+      "mcp__desktop-commander__list_directory"
     ],
     "deny": []
   }
