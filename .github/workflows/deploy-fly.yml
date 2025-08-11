@@ -35,15 +35,37 @@ jobs:
           
           # Set secrets for production (remove --stage flag)
           echo "Setting environment variables..."
-          flyctl secrets set \
-            TELEGRAM_BOT_TOKEN="${{ secrets.TELEGRAM_BOT_TOKEN }}" \
-            CARSXE_API_KEY="${{ secrets.CARSXE_API_KEY }}" \
-            AUTODEV_API_KEY="${{ secrets.AUTODEV_API_KEY }}" \
-            UPSTASH_REDIS_REST_URL="${{ secrets.UPSTASH_REDIS_REST_URL }}" \
-            UPSTASH_REDIS_REST_TOKEN="${{ secrets.UPSTASH_REDIS_REST_TOKEN }}" \
-            HTTP_TIMEOUT_SECONDS="${{ secrets.HTTP_TIMEOUT_SECONDS }}" \
-            LOG_LEVEL="${{ secrets.LOG_LEVEL }}" \
-            --app vinbot-decoder
+          # Only set secrets that have values
+          SECRETS_TO_SET="TELEGRAM_BOT_TOKEN=\"${{ secrets.TELEGRAM_BOT_TOKEN }}\""
+          
+          if [ -n "${{ secrets.CARSXE_API_KEY }}" ]; then
+            SECRETS_TO_SET="$SECRETS_TO_SET CARSXE_API_KEY=\"${{ secrets.CARSXE_API_KEY }}\""
+          fi
+          
+          if [ -n "${{ secrets.AUTODEV_API_KEY }}" ]; then
+            SECRETS_TO_SET="$SECRETS_TO_SET AUTODEV_API_KEY=\"${{ secrets.AUTODEV_API_KEY }}\""
+          fi
+          
+          if [ -n "${{ secrets.UPSTASH_REDIS_REST_URL }}" ]; then
+            SECRETS_TO_SET="$SECRETS_TO_SET UPSTASH_REDIS_REST_URL=\"${{ secrets.UPSTASH_REDIS_REST_URL }}\""
+          fi
+          
+          if [ -n "${{ secrets.UPSTASH_REDIS_REST_TOKEN }}" ]; then
+            SECRETS_TO_SET="$SECRETS_TO_SET UPSTASH_REDIS_REST_TOKEN=\"${{ secrets.UPSTASH_REDIS_REST_TOKEN }}\""
+          fi
+          
+          # Set HTTP_TIMEOUT_SECONDS with a default value if not provided
+          HTTP_TIMEOUT="${{ secrets.HTTP_TIMEOUT_SECONDS }}"
+          if [ -z "$HTTP_TIMEOUT" ]; then
+            HTTP_TIMEOUT="30"
+          fi
+          SECRETS_TO_SET="$SECRETS_TO_SET HTTP_TIMEOUT_SECONDS=\"$HTTP_TIMEOUT\""
+          
+          if [ -n "${{ secrets.LOG_LEVEL }}" ]; then
+            SECRETS_TO_SET="$SECRETS_TO_SET LOG_LEVEL=\"${{ secrets.LOG_LEVEL }}\""
+          fi
+          
+          eval flyctl secrets set $SECRETS_TO_SET --app vinbot-decoder
           
           # Verify secrets were set
           echo "Verifying secrets were set..."
