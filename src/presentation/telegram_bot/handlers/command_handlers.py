@@ -4,7 +4,6 @@ import logging
 from telegram import Update
 from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
-from src.domain.user.value_objects.user_preferences import UserPreferences
 from src.application.vehicle.services.vehicle_application_service import VehicleApplicationService
 from src.application.user.services.user_application_service import UserApplicationService
 from src.presentation.telegram_bot.adapters.message_adapter import MessageAdapter
@@ -61,13 +60,18 @@ class CommandHandlers:
             
             vin = " ".join(context.args).strip()
             
-            # Get user preferences
-            telegram_id = update.effective_user.id
-            user = await self.user_service.get_user_by_telegram_id(telegram_id)
-            preferences = user.preferences if user else UserPreferences()
+            # Get or create user to ensure we have their preferences
+            user = await self.user_service.get_or_create_user(
+                telegram_id=update.effective_user.id,
+                username=update.effective_user.username,
+                first_name=update.effective_user.first_name,
+                last_name=update.effective_user.last_name
+            )
+            
+            logger.info(f"User {update.effective_user.id} preferences: decoder={user.preferences.preferred_decoder}, has_api_key={bool(user.preferences.autodev_api_key)}")
             
             # Decode the VIN
-            result = await self.vehicle_service.decode_vin(vin, preferences)
+            result = await self.vehicle_service.decode_vin(vin, user.preferences)
             
             # Format and send response
             # This would use the message adapter in a full implementation
