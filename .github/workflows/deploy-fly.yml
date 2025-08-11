@@ -25,6 +25,16 @@ jobs:
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
         run: |
+          echo "Setting secrets for vinbot-decoder app..."
+          
+          # Check if required secrets exist
+          if [ -z "${{ secrets.TELEGRAM_BOT_TOKEN }}" ]; then
+            echo "ERROR: TELEGRAM_BOT_TOKEN is not set in GitHub secrets"
+            exit 1
+          fi
+          
+          # Set secrets for production (remove --stage flag)
+          echo "Setting environment variables..."
           flyctl secrets set \
             TELEGRAM_BOT_TOKEN="${{ secrets.TELEGRAM_BOT_TOKEN }}" \
             CARSXE_API_KEY="${{ secrets.CARSXE_API_KEY }}" \
@@ -33,7 +43,11 @@ jobs:
             UPSTASH_REDIS_REST_TOKEN="${{ secrets.UPSTASH_REDIS_REST_TOKEN }}" \
             HTTP_TIMEOUT_SECONDS="${{ secrets.HTTP_TIMEOUT_SECONDS }}" \
             LOG_LEVEL="${{ secrets.LOG_LEVEL }}" \
-            --app vinbot-decoder --stage
+            --app vinbot-decoder
+          
+          # Verify secrets were set
+          echo "Verifying secrets were set..."
+          flyctl secrets list --app vinbot-decoder
 
       - name: Deploy to Fly.io
         env:
