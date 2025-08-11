@@ -9,8 +9,8 @@ from dotenv import load_dotenv
 import os
 import sys
 
-# Add project to path
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+# Add project root to path
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
 # CarsXE removed
 from vinbot.formatter import format_vehicle_summary

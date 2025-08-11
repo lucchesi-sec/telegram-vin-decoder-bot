@@ -14,7 +14,7 @@ import sys
 import os
 
 # Add the project root to the path so we can import vinbot modules
-sys.path.insert(0, os.path.dirname(__file__))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
 from vinbot.smart_formatter import (
     format_vehicle_smart_card, 

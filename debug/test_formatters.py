@@ -7,8 +7,8 @@ import json
 import sys
 import os
 
-# Add project to path
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+# Add project root to path
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
 from vinbot.formatter import format_vehicle_summary
 from vinbot.formatter_extensions import format_market_value, format_history
@@ -16,16 +16,18 @@ from vinbot.formatter_extensions import format_market_value, format_history
 # Load the sample data we captured earlier
 print("Loading sample data...")
 
+DATA_DIR = os.path.join(os.path.dirname(__file__), "data")
+
 # Load specs data
-with open("specs_response.json", "r") as f:
+with open(os.path.join(DATA_DIR, "specs_response.json"), "r") as f:
     specs_data = json.load(f)
 
 # Load market value data
-with open("marketvalue_response.json", "r") as f:
+with open(os.path.join(DATA_DIR, "marketvalue_response.json"), "r") as f:
     marketvalue_data = json.load(f)
 
 # Load history data
-with open("history_response.json", "r") as f:
+with open(os.path.join(DATA_DIR, "history_response.json"), "r") as f:
     history_data = json.load(f)
 
 # Combine into a single data object like the new client would return
