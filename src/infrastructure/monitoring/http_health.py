@@ -3,6 +3,7 @@
 import asyncio
 import json
 import logging
+import time
 from http.server import BaseHTTPRequestHandler, HTTPServer
 import threading
 from typing import Dict, Any
@@ -26,7 +27,7 @@ class HealthCheckHandler(BaseHTTPRequestHandler):
         """Handle basic health check."""
         response = {
             "status": "healthy",
-            "timestamp": asyncio.get_event_loop().time() if asyncio._get_running_loop() else 0,
+            "timestamp": time.time(),
             "service": "vinbot-decoder"
         }
         self._send_json_response(200, response)
@@ -37,7 +38,7 @@ class HealthCheckHandler(BaseHTTPRequestHandler):
         # TODO: Add actual service dependency checks
         response = {
             "status": "ready",
-            "timestamp": asyncio.get_event_loop().time() if asyncio._get_running_loop() else 0,
+            "timestamp": time.time(),
             "dependencies": {
                 "telegram_api": "unknown",
                 "external_services": "unknown"

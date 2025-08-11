@@ -50,16 +50,23 @@ class BotApplication:
         """Initialize the bot application."""
         try:
             # Set up logging
+            logger.info("Setting up logging...")
             setup_logging(self.settings.log_level)
             
             # Create application
+            logger.info("Creating Telegram application...")
+            bot_token = self.settings.telegram.bot_token.get_secret_value()
+            logger.info(f"Bot token length: {len(bot_token)} characters")
+            
             self.application = (
                 ApplicationBuilder()
-                .token(self.settings.telegram.bot_token.get_secret_value())
+                .token(bot_token)
                 .build()
             )
+            logger.info("Telegram application created successfully")
             
             # Create handler instances with injected services and adapters
+            logger.info("Creating command handlers...")
             self.command_handlers = CommandHandlers(
                 vehicle_service=self.vehicle_service,
                 user_service=self.user_service,
@@ -67,6 +74,7 @@ class BotApplication:
                 keyboard_adapter=self.keyboard_adapter
             )
             
+            logger.info("Creating callback handlers...")
             self.callback_handlers = CallbackHandlers(
                 vehicle_service=self.vehicle_service,
                 user_service=self.user_service,
@@ -75,11 +83,12 @@ class BotApplication:
             )
             
             # Set up handlers
+            logger.info("Setting up handlers...")
             await self._setup_handlers()
             
             logger.info("Bot application initialized successfully")
         except Exception as e:
-            logger.error(f"Error initializing bot application: {e}")
+            logger.error(f"Error initializing bot application: {e}", exc_info=True)
             raise
     
     async def _setup_handlers(self) -> None:
@@ -133,15 +142,25 @@ class BotApplication:
         """Run the bot application."""
         try:
             if not self.application:
+                logger.info("Initializing bot application...")
                 await self.initialize()
             
-            logger.info("Starting bot application...")
+            logger.info("Starting bot polling...")
+            # Test bot connection first
+            try:
+                bot_info = await self.application.bot.get_me()
+                logger.info(f"Bot connected successfully: @{bot_info.username} ({bot_info.first_name})")
+            except Exception as e:
+                logger.error(f"Failed to connect to Telegram API: {e}")
+                raise
+            
+            # Start polling
             await self.application.run_polling(
                 allowed_updates=None,  # Receive all update types
                 drop_pending_updates=True
             )
         except Exception as e:
-            logger.error(f"Error running bot application: {e}")
+            logger.error(f"Error running bot application: {e}", exc_info=True)
             raise
     
     async def shutdown(self) -> None:

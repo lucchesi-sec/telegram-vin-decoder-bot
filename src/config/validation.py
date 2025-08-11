@@ -27,8 +27,12 @@ def validate_environment() -> Tuple[bool, List[str]]:
     
     # Check for common configuration issues
     bot_token = os.getenv("TELEGRAM_BOT_TOKEN")
-    if bot_token and (len(bot_token) < 40 or not bot_token.startswith(("bot", "BOT"))):
-        errors.append("TELEGRAM_BOT_TOKEN appears to be invalid (should start with 'bot' and be ~45 characters)")
+    if bot_token:
+        # Telegram bot tokens format: bot_id:auth_token (e.g., "123456789:AAHdqTcvCH1vGWJxfSeofSAs0K5PALDsaw")
+        if len(bot_token) < 40:
+            errors.append("TELEGRAM_BOT_TOKEN appears too short (should be ~45 characters)")
+        elif ":" not in bot_token:
+            errors.append("TELEGRAM_BOT_TOKEN appears invalid (should contain ':' separator)")
     
     return len(errors) == 0, errors
 
