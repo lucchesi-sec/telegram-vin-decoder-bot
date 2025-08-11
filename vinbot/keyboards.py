@@ -108,7 +108,7 @@ def get_settings_keyboard(current_service: str = "NHTSA", has_autodev_key: bool 
     # First row: NHTSA
     buttons.append([
         InlineKeyboardButton(
-            f"{nhtsa_check} NHTSA (Free)", 
+            f"{nhtsa_check} NHTSA (Basic)", 
             callback_data="set_service:NHTSA"
         )
     ])
@@ -116,7 +116,7 @@ def get_settings_keyboard(current_service: str = "NHTSA", has_autodev_key: bool 
     # Second row: Auto.dev
     buttons.append([
         InlineKeyboardButton(
-            f"{autodev_check} Auto.dev (Premium)", 
+            f"{autodev_check} Auto.dev (Enhanced)", 
             callback_data="set_service:AutoDev"
         )
     ])

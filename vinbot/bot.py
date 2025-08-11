@@ -109,32 +109,46 @@ async def cmd_settings(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         return
     
     # Get user settings
-    settings = await user_data_mgr.get_user_settings(user_id)
-    current_service = settings.get("service", "NHTSA")
-    has_carsxe_key = False  # CarsXE removed
-    has_autodev_key = bool(settings.get("autodev_api_key"))
+    user_settings = await user_data_mgr.get_user_settings(user_id)
+    has_autodev_key = bool(user_settings.get("autodev_api_key"))
     
-    # Create settings keyboard
+    # Get default Auto.dev API key from environment
+    bot_settings = context.bot_data.get("settings")
+    default_autodev_key = bot_settings.autodev_api_key if bot_settings and hasattr(bot_settings, 'autodev_api_key') else ""
+    
+    # Determine actual service being used (same logic as get_user_decoder)
+    if default_autodev_key and user_settings.get("service") != "NHTSA":
+        actual_service = "AutoDev"
+        using_default_key = not has_autodev_key
+    else:
+        actual_service = user_settings.get("service", "NHTSA")
+        using_default_key = False
+    
+    # Create settings keyboard with actual service
     from .keyboards import get_settings_keyboard
     keyboard = get_settings_keyboard(
-        current_service=current_service,
+        current_service=actual_service,
         has_autodev_key=has_autodev_key
     )
     
     # Service descriptions
-    service_desc = {
-        "NHTSA": "✅ Using NHTSA (Free, no API key required)",
-        "AutoDev": "🔄 Using Auto.dev (Requires API key)",
-    }
-    
-    current_desc = service_desc.get(current_service, "NHTSA (Free)")
+    if actual_service == "AutoDev":
+        if using_default_key:
+            current_desc = "✅ Using Auto.dev (Enhanced) - Default API key"
+        elif has_autodev_key:
+            current_desc = "✅ Using Auto.dev (Enhanced) - Your API key"
+        else:
+            current_desc = "✅ Using Auto.dev (Enhanced)"
+    else:
+        current_desc = "✅ Using NHTSA (Basic) - Free, no API key required"
     
     text = (
         "⚙️ **Settings**\n\n"
         f"**Current Service:** {current_desc}\n\n"
-        "Select a service below to change your preference. "
-        "Auto.dev provides more detailed vehicle information but requires an API key.\n\n"
-        "NHTSA is completely free and provides basic vehicle information."
+        "Select a service below to change your preference:\n"
+        "• **NHTSA (Basic)** - Free government database\n"
+        "• **Auto.dev (Enhanced)** - Premium data with more details\n\n"
+        "_The green checkmark shows your active service._"
     )
     
     await update.message.reply_text(
@@ -230,32 +244,46 @@ async def show_settings_menu(update: Update, context: ContextTypes.DEFAULT_TYPE)
         return
     
     # Get user settings
-    settings = await user_data_mgr.get_user_settings(user_id)
-    current_service = settings.get("service", "NHTSA")
-    has_carsxe_key = False  # CarsXE removed
-    has_autodev_key = bool(settings.get("autodev_api_key"))
+    user_settings = await user_data_mgr.get_user_settings(user_id)
+    has_autodev_key = bool(user_settings.get("autodev_api_key"))
     
-    # Create settings keyboard
+    # Get default Auto.dev API key from environment
+    bot_settings = context.bot_data.get("settings")
+    default_autodev_key = bot_settings.autodev_api_key if bot_settings and hasattr(bot_settings, 'autodev_api_key') else ""
+    
+    # Determine actual service being used (same logic as get_user_decoder)
+    if default_autodev_key and user_settings.get("service") != "NHTSA":
+        actual_service = "AutoDev"
+        using_default_key = not has_autodev_key
+    else:
+        actual_service = user_settings.get("service", "NHTSA")
+        using_default_key = False
+    
+    # Create settings keyboard with actual service
     from .keyboards import get_settings_keyboard
     keyboard = get_settings_keyboard(
-        current_service=current_service,
+        current_service=actual_service,
         has_autodev_key=has_autodev_key
     )
     
     # Service descriptions
-    service_desc = {
-        "NHTSA": "✅ Using NHTSA (Free, no API key required)",
-        "AutoDev": "🔄 Using Auto.dev (Requires API key)",
-    }
-    
-    current_desc = service_desc.get(current_service, "NHTSA (Free)")
+    if actual_service == "AutoDev":
+        if using_default_key:
+            current_desc = "✅ Using Auto.dev (Enhanced) - Default API key"
+        elif has_autodev_key:
+            current_desc = "✅ Using Auto.dev (Enhanced) - Your API key"
+        else:
+            current_desc = "✅ Using Auto.dev (Enhanced)"
+    else:
+        current_desc = "✅ Using NHTSA (Basic) - Free, no API key required"
     
     text = (
         "⚙️ **Settings**\n\n"
         f"**Current Service:** {current_desc}\n\n"
-        "Select a service below to change your preference. "
-        "Auto.dev provides more detailed vehicle information but requires an API key.\n\n"
-        "NHTSA is completely free and provides basic vehicle information."
+        "Select a service below to change your preference:\n"
+        "• **NHTSA (Basic)** - Free government database\n"
+        "• **Auto.dev (Enhanced)** - Premium data with more details\n\n"
+        "_The green checkmark shows your active service._"
     )
     
     if update.callback_query:
@@ -752,30 +780,45 @@ async def handle_callback_query(update: Update, context: ContextTypes.DEFAULT_TY
         user_id = update.effective_user.id if update.effective_user else None
         
         if user_data_mgr and user_id:
-            settings = await user_data_mgr.get_user_settings(user_id)
-            current_service = settings.get("service", "NHTSA")
-            has_carsxe_key = False  # CarsXE removed
-            has_autodev_key = bool(settings.get("autodev_api_key"))
+            user_settings = await user_data_mgr.get_user_settings(user_id)
+            has_autodev_key = bool(user_settings.get("autodev_api_key"))
+            
+            # Get default Auto.dev API key from environment
+            bot_settings = context.bot_data.get("settings")
+            default_autodev_key = bot_settings.autodev_api_key if bot_settings and hasattr(bot_settings, 'autodev_api_key') else ""
+            
+            # Determine actual service being used (same logic as get_user_decoder)
+            if default_autodev_key and user_settings.get("service") != "NHTSA":
+                actual_service = "AutoDev"
+                using_default_key = not has_autodev_key
+            else:
+                actual_service = user_settings.get("service", "NHTSA")
+                using_default_key = False
             
             from .keyboards import get_settings_keyboard
             keyboard = get_settings_keyboard(
-                current_service=current_service,
+                current_service=actual_service,
                 has_autodev_key=has_autodev_key
             )
             
-            service_desc = {
-                "NHTSA": "✅ Using NHTSA (Free, no API key required)",
-                "AutoDev": "🔄 Using Auto.dev (Requires API key)",
-            }
-            
-            current_desc = service_desc.get(current_service, "NHTSA (Free)")
+            # Service descriptions
+            if actual_service == "AutoDev":
+                if using_default_key:
+                    current_desc = "✅ Using Auto.dev (Enhanced) - Default API key"
+                elif has_autodev_key:
+                    current_desc = "✅ Using Auto.dev (Enhanced) - Your API key"
+                else:
+                    current_desc = "✅ Using Auto.dev (Enhanced)"
+            else:
+                current_desc = "✅ Using NHTSA (Basic) - Free, no API key required"
             
             text = (
                 "⚙️ **Settings**\n\n"
                 f"**Current Service:** {current_desc}\n\n"
-                "Select a service below to change your preference. "
-                "Auto.dev provides more detailed vehicle information but requires an API key.\n\n"
-                "NHTSA is completely free and provides basic vehicle information."
+                "Select a service below to change your preference:\n"
+                "• **NHTSA (Basic)** - Free government database\n"
+                "• **Auto.dev (Enhanced)** - Premium data with more details\n\n"
+                "_The green checkmark shows your active service._"
             )
             
             await query.message.edit_text(
