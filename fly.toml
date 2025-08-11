@@ -1,6 +1,6 @@
 # fly.toml app configuration file generated for vinbot-decoder
 
-app = 'vinbot-decoder'
+app = 'vinbot-decoder-v2'
 primary_region = 'ewr'
 
 [build]

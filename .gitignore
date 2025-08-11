@@ -54,3 +54,6 @@ dmypy.json
 
 # Fly.io
 fly.toml.bak
+
+# Crush
+.crush/

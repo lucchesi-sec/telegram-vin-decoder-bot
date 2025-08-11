@@ -1,6 +1,7 @@
 """Dependency injection container."""
 
 import logging
+from typing import Optional
 from dependency_injector import containers, providers
 
 logger = logging.getLogger(__name__)
@@ -38,28 +39,18 @@ class Container(containers.DeclarativeContainer):
         Settings
     )
     
-    # Initialize configuration from settings
-    @providers.Factory
-    def config_initializer(settings=settings):
-        """Initialize config from settings."""
-        config.from_dict({
-            'telegram': settings.telegram.model_dump(),
-            'decoder': settings.decoder.model_dump(),
-            'cache': settings.cache.model_dump()
-        })
-        return config
-    
     # External Services - NHTSA
     nhtsa_client = providers.Singleton(
         NHTSAClient,
-        timeout=providers.Factory(lambda s: s.decoder.timeout, settings)
+        timeout=providers.Factory(lambda: Container.settings().decoder.timeout)
     )
     
     # External Services - AutoDev
     autodev_client = providers.Singleton(
-        AutoDevClient,
-        api_key=providers.Factory(lambda s: s.decoder.autodev_api_key.get_secret_value() if s.decoder.autodev_api_key else None, settings),
-        timeout=providers.Factory(lambda s: s.decoder.timeout, settings)
+        lambda: AutoDevClient(
+            api_key=Container.settings().decoder.autodev_api_key.get_secret_value() if Container.settings().decoder.autodev_api_key else None,
+            timeout=Container.settings().decoder.timeout
+        )
     )
     
     # Adapters
@@ -81,49 +72,38 @@ class Container(containers.DeclarativeContainer):
     )
     
     # Database Engine (conditional)
-    @providers.Singleton
-    def database_engine(settings=settings):
-        """Create database engine if configured."""
-        if settings.database.database_url:
-            # Convert regular PostgreSQL URL to async
-            db_url = settings.database.database_url
-            if db_url.startswith("postgresql://"):
-                db_url = db_url.replace("postgresql://", "postgresql+asyncpg://", 1)
-            return DatabaseEngine(db_url)
-        return None
+    database_engine = providers.Singleton(
+        lambda: DatabaseEngine(
+            Container.settings().database.database_url.replace("postgresql://", "postgresql+asyncpg://", 1) 
+            if Container.settings().database.database_url.startswith("postgresql://") 
+            else Container.settings().database.database_url
+        ) if Container.settings().database.database_url else None
+    )
     
     # Cache (conditional)
-    @providers.Singleton
-    def upstash_cache(settings=settings):
-        """Create Upstash cache if configured."""
-        if settings.cache.upstash_url and settings.cache.upstash_token:
-            return UpstashCache(
-                redis_url=settings.cache.upstash_url,
-                redis_token=settings.cache.upstash_token.get_secret_value()
-            )
-        return None
+    upstash_cache = providers.Singleton(
+        lambda: UpstashCache(
+            redis_url=Container.settings().cache.upstash_url,
+            redis_token=Container.settings().cache.upstash_token.get_secret_value()
+        ) if Container.settings().cache.upstash_url and Container.settings().cache.upstash_token else None
+    )
     
-    @providers.Singleton
-    def vehicle_cache_repository(upstash_cache=upstash_cache):
-        """Create vehicle cache repository if cache is available."""
-        if upstash_cache:
-            return VehicleCacheRepository(upstash_cache)
-        return None
+    vehicle_cache_repository = providers.Singleton(
+        lambda: VehicleCacheRepository(Container.upstash_cache()) if Container.upstash_cache() else None
+    )
     
     # Repositories (conditional based on database availability)
-    @providers.Singleton
-    def vehicle_repository(database_engine=database_engine):
-        """Create vehicle repository based on available storage."""
-        if database_engine:
-            return PostgreSQLVehicleRepository(database_engine.async_session_maker)
-        return InMemoryVehicleRepository()
+    vehicle_repository = providers.Singleton(
+        lambda: PostgreSQLVehicleRepository(Container.database_engine().async_session_maker)
+        if Container.database_engine() and hasattr(Container.database_engine(), 'async_session_maker')
+        else InMemoryVehicleRepository()
+    )
     
-    @providers.Singleton
-    def user_repository(database_engine=database_engine):
-        """Create user repository based on available storage."""
-        if database_engine:
-            return PostgreSQLUserRepository(database_engine.async_session_maker)
-        return InMemoryUserRepository()
+    user_repository = providers.Singleton(
+        lambda: PostgreSQLUserRepository(Container.database_engine().async_session_maker)
+        if Container.database_engine() and hasattr(Container.database_engine(), 'async_session_maker')
+        else InMemoryUserRepository()
+    )
     
     # Event Bus
     event_bus = providers.Singleton(

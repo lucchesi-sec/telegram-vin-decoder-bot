@@ -9,6 +9,44 @@ from src.domain.vehicle.events import VehicleDecodedEvent
 
 
 @dataclass
+class BasicInfo:
+    """Basic vehicle information."""
+    vin: str = ""
+    manufacturer: str = ""
+    model: str = ""
+    model_year: int = 0
+    body_class: str = ""
+    vehicle_type: str = ""
+    gross_vehicle_weight_rating: str = ""
+    manufacturer_address: str = ""
+    plant_city: str = ""
+    plant_country: str = ""
+    plant_state: str = ""
+
+
+@dataclass
+class Specifications:
+    """Vehicle specifications."""
+    displacement_cc: Optional[float] = None
+    displacement_ci: Optional[float] = None
+    displacement_l: Optional[float] = None
+    engine_cylinders: Optional[int] = None
+    engine_model: str = ""
+    fuel_type_primary: str = ""
+    electrification_level: str = ""
+    other_engine_info: str = ""
+    turbo: Optional[bool] = None
+    drive_type: str = ""
+    transmission_style: str = ""
+    transmission_speeds: str = ""
+    doors: Optional[int] = None
+    seats: Optional[int] = None
+    wheel_base_type: str = ""
+    bed_type: str = ""
+    cab_type: str = ""
+
+
+@dataclass
 class DecodeAttempt:
     """Represents a single decode attempt for a vehicle."""
     

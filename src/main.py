@@ -85,7 +85,8 @@ async def main():
         
         # Initialize database if configured
         logger.info("Initializing database if configured...")
-        Container.initialize_database(container)
+        import asyncio
+        asyncio.run(Container.initialize_database(container))
         
         # Bootstrap the container to register handlers with buses
         logger.info("Bootstrapping container (registering handlers with buses)...")
@@ -169,7 +170,8 @@ def run_sync():
         
         # Initialize database if configured
         logger.info("Initializing database if configured...")
-        Container.initialize_database(container)
+        import asyncio
+        asyncio.run(Container.initialize_database(container))
         
         # Bootstrap the container to register handlers with buses
         logger.info("Bootstrapping container (registering handlers with buses)...")
