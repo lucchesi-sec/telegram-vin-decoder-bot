@@ -72,16 +72,28 @@ WELCOME_TEXT = (
 
 
 async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    # Check if Auto.dev is configured by default
+    settings = context.bot_data.get("settings")
+    service_info = ""
+    if settings and hasattr(settings, 'autodev_api_key') and settings.autodev_api_key:
+        service_info = "\n\n✨ **Using Auto.dev (Premium) by default**"
+    
     await update.message.reply_text(
-        WELCOME_TEXT,
+        WELCOME_TEXT + service_info,
         parse_mode=ParseMode.MARKDOWN,
         reply_markup=get_sample_vin_keyboard()
     )
 
 
 async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    # Check if Auto.dev is configured by default
+    settings = context.bot_data.get("settings")
+    service_info = ""
+    if settings and hasattr(settings, 'autodev_api_key') and settings.autodev_api_key:
+        service_info = "\n\n✨ **Using Auto.dev (Premium) by default**"
+    
     await update.message.reply_text(
-        WELCOME_TEXT,
+        WELCOME_TEXT + service_info,
         parse_mode=ParseMode.MARKDOWN,
         reply_markup=get_sample_vin_keyboard()
     )
@@ -278,23 +290,43 @@ async def get_user_decoder(context: ContextTypes.DEFAULT_TYPE, user_id: int) -> 
     if user_data_mgr and user_id:
         user_settings = await user_data_mgr.get_user_settings(user_id)
     
-    # Determine which service to use
-    service = user_settings.get("service", "NHTSA")  # Default to NHTSA
+    # Get default Auto.dev API key from settings if available
+    settings = context.bot_data.get("settings")
+    default_autodev_key = settings.autodev_api_key if settings and hasattr(settings, 'autodev_api_key') else ""
     
-    # Initialize the appropriate client based on user preference
+    # Determine which service to use
+    # If default Auto.dev key is available and user hasn't explicitly chosen NHTSA, use Auto.dev
+    if default_autodev_key and user_settings.get("service") != "NHTSA":
+        service = "AutoDev"
+    else:
+        service = user_settings.get("service", "NHTSA")
+    
+    # Initialize the appropriate client based on preference
     if service == "AutoDev":
-        # Check if user has an Auto.dev API key
-        api_key = user_settings.get("autodev_api_key")
+        # Check if user has their own Auto.dev API key, otherwise use default
+        api_key = user_settings.get("autodev_api_key") or default_autodev_key
         if api_key:
-            # Create Auto.dev client with user's API key
+            # Create Auto.dev client with API key
             cache = context.bot_data.get("cache")
-            if f"autodev_client_{user_id}" not in context.user_data:
-                context.user_data[f"autodev_client_{user_id}"] = AutoDevClient(
-                    api_key=api_key, cache=cache
-                )
-            return context.user_data[f"autodev_client_{user_id}"]
+            client_key = f"autodev_client_{user_id}" if user_settings.get("autodev_api_key") else "autodev_client_default"
+            
+            # Store in appropriate context based on whether it's user-specific or default
+            if user_settings.get("autodev_api_key"):
+                # User-specific key, store in user_data
+                if client_key not in context.user_data:
+                    context.user_data[client_key] = AutoDevClient(
+                        api_key=api_key, cache=cache
+                    )
+                return context.user_data[client_key]
+            else:
+                # Default key, store in bot_data for sharing
+                if client_key not in context.bot_data:
+                    context.bot_data[client_key] = AutoDevClient(
+                        api_key=api_key, cache=cache
+                    )
+                return context.bot_data[client_key]
         else:
-            # Fall back to NHTSA if no API key is set
+            # Fall back to NHTSA if no API key is available
             service = "NHTSA"
     
     # For NHTSA or fallback, use the shared NHTSA client
