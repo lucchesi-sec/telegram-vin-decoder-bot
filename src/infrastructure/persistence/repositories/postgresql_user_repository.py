@@ -230,8 +230,7 @@ class PostgreSQLUserRepository(UserRepository):
             is_active=model.is_active,
             is_premium=model.is_premium,
             preferences=preferences,
-            last_active_at=model.last_active_at,
-            created_at=model.created_at
+            last_active_at=model.last_active_at
         )
     
     def _get_subscription_tier(self, user: User) -> SubscriptionTier:

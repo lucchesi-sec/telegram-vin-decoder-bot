@@ -81,6 +81,7 @@ class CommandHandlers:
                 username=update.effective_user.username,
                 first_name=update.effective_user.first_name,
                 last_name=update.effective_user.last_name,
+                language_code=getattr(update.effective_user, 'language_code', 'en'),
             )
 
             logger.info(
@@ -216,6 +217,7 @@ class CommandHandlers:
                 username=update.effective_user.username,
                 first_name=update.effective_user.first_name,
                 last_name=update.effective_user.last_name,
+                language_code=getattr(update.effective_user, 'language_code', 'en'),
             )
 
             # Build keyboard - simplified without decoder selection or API key management

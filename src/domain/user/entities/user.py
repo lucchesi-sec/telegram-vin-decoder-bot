@@ -23,15 +23,18 @@ class UserHistory:
 class User(AggregateRoot):
     """User aggregate root."""
     
-    telegram_id: TelegramID = None
+    telegram_id: TelegramID = field(default=None)
     username: Optional[str] = None
     first_name: Optional[str] = None
     last_name: Optional[str] = None
+    language_code: Optional[str] = "en"
+    is_premium: bool = False
     preferences: UserPreferences = field(default_factory=UserPreferences)
     history: List[UserHistory] = field(default_factory=list)
     saved_vehicles: List[str] = field(default_factory=list)  # List of VINs
     is_active: bool = True
     last_activity: Optional[datetime] = None
+    last_active_at: Optional[datetime] = None
     
     def __post_init__(self):
         """Initialize the user aggregate."""
@@ -48,6 +51,7 @@ class User(AggregateRoot):
         username: Optional[str] = None,
         first_name: Optional[str] = None,
         last_name: Optional[str] = None,
+        language_code: Optional[str] = "en",
         preferences: Optional[UserPreferences] = None
     ) -> 'User':
         """Factory method for creating a new user."""
@@ -56,6 +60,7 @@ class User(AggregateRoot):
             username=username,
             first_name=first_name,
             last_name=last_name,
+            language_code=language_code,
             preferences=preferences or UserPreferences()
         )
         

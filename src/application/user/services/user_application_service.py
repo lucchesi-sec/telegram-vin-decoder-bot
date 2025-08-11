@@ -34,7 +34,8 @@ class UserApplicationService:
         telegram_id: int,
         username: Optional[str] = None,
         first_name: Optional[str] = None,
-        last_name: Optional[str] = None
+        last_name: Optional[str] = None,
+        language_code: Optional[str] = "en"
     ) -> User:
         """Get existing user or create new one.
         
@@ -74,7 +75,8 @@ class UserApplicationService:
             telegram_id=tid,
             username=username,
             first_name=first_name,
-            last_name=last_name
+            last_name=last_name,
+            language_code=language_code
         )
         
         await self.user_repository.save(new_user)

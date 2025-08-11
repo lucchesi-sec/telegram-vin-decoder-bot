@@ -85,6 +85,7 @@ class CallbackHandlers:
                 username=update.effective_user.username,
                 first_name=update.effective_user.first_name,
                 last_name=update.effective_user.last_name,
+                language_code=getattr(update.effective_user, 'language_code', 'en'),
             )
 
             # Decode the VIN again (force refresh)
