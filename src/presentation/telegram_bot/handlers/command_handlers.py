@@ -87,8 +87,19 @@ class CommandHandlers:
                 f"User {update.effective_user.id} preferences: decoder={user.preferences.preferred_decoder}"
             )
 
+            # Show processing message
+            processing_msg = await update.message.reply_text(
+                f"🔍 Decoding VIN: `{vin}`...", parse_mode=ParseMode.MARKDOWN
+            )
+
             # Decode the VIN
             result = await self.vehicle_service.decode_vin(vin, user.preferences)
+
+            # Delete processing message
+            try:
+                await processing_msg.delete()
+            except Exception:
+                pass  # Ignore if message already deleted
 
             # Format and send response
             if result.success:

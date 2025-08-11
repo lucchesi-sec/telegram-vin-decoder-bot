@@ -16,7 +16,7 @@ class DecoderFactory:
         self,
         nhtsa_adapter: NHTSAAdapter,
         autodev_adapter: AutoDevAdapter,
-        default_service: str = "nhtsa",
+        default_service: str = "autodev",
     ):
         self.nhtsa_adapter = nhtsa_adapter
         self.autodev_adapter = autodev_adapter
