@@ -72,25 +72,61 @@ class DecodeVINHandler(CommandHandler[DecodeVINCommand, DecodeResult]):
         """Create a vehicle entity from raw decode result."""
         from src.domain.vehicle.value_objects import ModelYear
         
+        # Handle different response formats from various services
+        attributes = raw_result.get("attributes", {})
+        
+        # Extract manufacturer - could be in attributes or top-level
+        manufacturer = (
+            attributes.get("manufacturer") or 
+            attributes.get("make") or 
+            raw_result.get("manufacturer", "Unknown")
+        )
+        
+        # Extract model - could be in attributes or top-level
+        model = (
+            attributes.get("model") or 
+            raw_result.get("model", "Unknown")
+        )
+        
+        # Extract year - could be in attributes or top-level
+        year_value = (
+            attributes.get("year") or 
+            attributes.get("model_year") or 
+            raw_result.get("year") or 
+            raw_result.get("model_year") or 
+            "2020"
+        )
+        
+        # Ensure year is a valid integer
+        try:
+            year = int(str(year_value))
+        except (ValueError, TypeError):
+            year = 2020
+        
         return Vehicle.create_from_decode_result(
             vin=vin,
-            manufacturer=raw_result.get("manufacturer", "Unknown"),
-            model=raw_result.get("model", "Unknown"),
-            model_year=ModelYear(int(raw_result.get("year", 2020))),
-            attributes=raw_result,
+            manufacturer=manufacturer,
+            model=model,
+            model_year=ModelYear(year),
+            attributes=attributes if attributes else raw_result,
             service_used=raw_result.get("service", "Unknown")
         )
     
     def _vehicle_to_decode_result(self, vehicle: Vehicle) -> DecodeResult:
         """Convert a vehicle entity to a decode result."""
+        # Get service used from the most recent decode attempt
+        service_used = "Unknown"
+        if vehicle.decode_history:
+            service_used = vehicle.decode_history[-1].service_used
+            
         return DecodeResult(
             vin=str(vehicle.vin),
             success=True,
-            manufacturer=vehicle.attributes.get("manufacturer"),
-            model=vehicle.attributes.get("model"),
-            model_year=vehicle.attributes.get("model_year"),
+            manufacturer=vehicle.manufacturer,
+            model=vehicle.model,
+            model_year=vehicle.model_year.value if vehicle.model_year else None,
             attributes=vehicle.attributes,
-            service_used="Unknown"  # This would come from the decode attempt
+            service_used=service_used
         )
 
 
