@@ -19,8 +19,9 @@ logger = logging.getLogger(__name__)
 
 async def main():
     """Main application entry point."""
-    bot_app = None
     health_server = None
+    bot_app = None
+    
     try:
         # Set up basic logging first
         logging.basicConfig(
@@ -28,7 +29,7 @@ async def main():
             format='%(asctime)s | %(levelname)s | %(name)s | %(message)s'
         )
         
-        # Start health check server for Fly.io smoke tests
+        # Start health check server for Fly.io smoke tests (in daemon thread)
         health_server = HealthCheckServer(port=8080)
         health_server.start()
         
@@ -38,7 +39,7 @@ async def main():
         # Check startup requirements
         if not check_startup_requirements():
             logger.error("Startup requirements not met. Exiting.")
-            sys.exit(1)
+            return False
         
         # Create dependency injection container
         logger.info("Creating dependency injection container...")
@@ -56,27 +57,35 @@ async def main():
         logger.info("Creating bot application...")
         bot_app = BotApplication()
         
-        # Run the bot
+        # Run the bot - this will block until shutdown
         logger.info("Starting bot application...")
         await bot_app.run()
         
+        return True
+        
     except KeyboardInterrupt:
         logger.info("Received keyboard interrupt, shutting down...")
+        return True
     except Exception as e:
         logger.error(f"Application error: {e}", exc_info=True)
-        sys.exit(1)
+        return False
     finally:
-        if health_server:
-            health_server.stop()
+        # Clean shutdown
+        logger.info("Cleaning up resources...")
+        
         if bot_app:
-            await bot_app.shutdown()
-
-
-def signal_handler(sig, frame):
-    """Handle shutdown signals."""
-    logger.info('Shutting down gracefully...')
-    # Create a task to stop the event loop
-    asyncio.get_event_loop().stop()
+            try:
+                await bot_app.shutdown()
+                logger.info("Bot application shut down successfully")
+            except Exception as e:
+                logger.error(f"Error shutting down bot: {e}")
+        
+        if health_server:
+            try:
+                health_server.stop()
+                logger.info("Health server stopped successfully")
+            except Exception as e:
+                logger.error(f"Error stopping health server: {e}")
 
 
 if __name__ == "__main__":
@@ -86,12 +95,23 @@ if __name__ == "__main__":
         format='%(asctime)s | %(levelname)s | %(name)s | %(message)s'
     )
     
+    # Set up signal handlers for graceful shutdown
+    def handle_sigterm(signum, frame):
+        logger.info("Received SIGTERM, shutting down...")
+        sys.exit(0)
+    
+    signal.signal(signal.SIGTERM, handle_sigterm)
+    signal.signal(signal.SIGINT, handle_sigterm)
+    
     # Run the application
     try:
-        asyncio.run(main())
+        success = asyncio.run(main())
+        exit_code = 0 if success else 1
+        logger.info(f"Application finished with exit code: {exit_code}")
+        sys.exit(exit_code)
     except KeyboardInterrupt:
         logger.info("Bot stopped by user")
         sys.exit(0)
     except Exception as e:
-        logger.error(f"Fatal error: {e}")
+        logger.error(f"Fatal error: {e}", exc_info=True)
         sys.exit(1)

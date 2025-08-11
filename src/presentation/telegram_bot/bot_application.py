@@ -154,11 +154,14 @@ class BotApplication:
                 logger.error(f"Failed to connect to Telegram API: {e}")
                 raise
             
-            # Start polling
+            # Start polling - this will run until stopped
+            logger.info("Bot polling started successfully")
             await self.application.run_polling(
                 allowed_updates=None,  # Receive all update types
-                drop_pending_updates=True
+                drop_pending_updates=True,
+                close_loop=False  # Don't close the event loop when done
             )
+            logger.info("Bot polling stopped")
         except Exception as e:
             logger.error(f"Error running bot application: {e}", exc_info=True)
             raise
@@ -167,7 +170,9 @@ class BotApplication:
         """Shutdown the bot application."""
         try:
             if self.application:
+                logger.info("Shutting down bot application...")
                 await self.application.stop()
+                await self.application.shutdown()
                 logger.info("Bot application shut down successfully")
         except Exception as e:
             logger.error(f"Error shutting down bot application: {e}")
