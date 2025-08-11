@@ -79,7 +79,7 @@ async def main():
         
         # Run the bot - this will block until shutdown
         logger.info("Starting bot application...")
-        await bot_app.run()
+        bot_app.run()
         
         return True
         
@@ -95,7 +95,87 @@ async def main():
         
         if bot_app:
             try:
-                await bot_app.shutdown()
+                bot_app.shutdown()
+                logger.info("Bot application shut down successfully")
+            except Exception as e:
+                logger.error(f"Error shutting down bot: {e}")
+        
+        if health_server:
+            try:
+                health_server.stop()
+                logger.info("Health server stopped successfully")
+            except Exception as e:
+                logger.error(f"Error stopping health server: {e}")
+
+
+def run_sync():
+    """Run the application synchronously."""
+    health_server = None
+    bot_app = None
+    
+    try:
+        # Set up basic logging first
+        logging.basicConfig(
+            level=logging.INFO,
+            format='%(asctime)s | %(levelname)s | %(name)s | %(message)s'
+        )
+        
+        # Start health check server for Fly.io smoke tests (in daemon thread)
+        health_server = HealthCheckServer(port=8080)
+        health_server.start()
+        
+        # Print environment info for debugging
+        print_environment_info()
+        
+        # Check startup requirements
+        requirements_met = check_startup_requirements()
+        if not requirements_met:
+            logger.error("Startup requirements not met. Health server will remain running, but bot will not start.")
+            logger.info("Waiting for configuration to be provided...")
+            # Keep the process alive with health server running for deployment checks
+            import time
+            while True:
+                time.sleep(60)  # Sleep and keep health server running
+        
+        # Create dependency injection container
+        logger.info("Creating dependency injection container...")
+        container = Container()
+        
+        # Wire the container to all modules that use dependency injection
+        logger.info("Wiring dependency injection container...")
+        container.wire(modules=[
+            "src.presentation.telegram_bot.bot_application",
+            "src.presentation.telegram_bot.handlers.command_handlers",
+            "src.presentation.telegram_bot.handlers.callback_handlers"
+        ])
+        
+        # Bootstrap the container to register handlers with buses
+        logger.info("Bootstrapping container (registering handlers with buses)...")
+        Container.bootstrap(container)
+        
+        # Create bot application with dependency injection
+        logger.info("Creating bot application...")
+        bot_app = BotApplication()
+        
+        # Run the bot - this will block until shutdown
+        logger.info("Starting bot application...")
+        bot_app.run()
+        
+        return True
+        
+    except KeyboardInterrupt:
+        logger.info("Received keyboard interrupt, shutting down...")
+        return True
+    except Exception as e:
+        logger.error(f"Application error: {e}", exc_info=True)
+        return False
+    finally:
+        # Clean shutdown
+        logger.info("Cleaning up resources...")
+        
+        if bot_app:
+            try:
+                bot_app.shutdown()
                 logger.info("Bot application shut down successfully")
             except Exception as e:
                 logger.error(f"Error shutting down bot: {e}")
@@ -109,12 +189,6 @@ async def main():
 
 
 if __name__ == "__main__":
-    # Set up basic logging
-    logging.basicConfig(
-        level=logging.INFO,
-        format='%(asctime)s | %(levelname)s | %(name)s | %(message)s'
-    )
-    
     # Set up signal handlers for graceful shutdown
     def handle_sigterm(signum, frame):
         _ = frame  # Unused parameter
@@ -126,7 +200,7 @@ if __name__ == "__main__":
     
     # Run the application
     try:
-        success = asyncio.run(main())
+        success = run_sync()
         exit_code = 0 if success else 1
         logger.info(f"Application finished with exit code: {exit_code}")
         sys.exit(exit_code)

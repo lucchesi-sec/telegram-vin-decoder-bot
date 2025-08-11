@@ -141,62 +141,54 @@ class BotApplication:
                 "Sorry, an error occurred. Please try again later."
             )
     
-    async def run(self) -> None:
-        """Run the bot application."""
+    def run(self) -> None:
+        """Run the bot application (synchronous version)."""
         try:
             if not self.application:
                 logger.info("Initializing bot application...")
-                await self.initialize()
+                # We need to run initialize in a sync context
+                import asyncio
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                loop.run_until_complete(self.initialize())
+                loop.close()
             
             logger.info("Starting bot polling...")
             # Test bot connection first
             try:
-                bot_info = await self.application.bot.get_me()
+                import asyncio
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                bot_info = loop.run_until_complete(self.application.bot.get_me())
                 logger.info(f"Bot connected successfully: @{bot_info.username} ({bot_info.first_name})")
+                loop.close()
             except Exception as e:
                 logger.error(f"Failed to connect to Telegram API: {e}")
                 raise
             
-            # Start polling (this handles initialize, start, and polling)
-            logger.info("Starting bot application with polling...")
-            
-            # Create a stop event for graceful shutdown
-            self.stop_event = asyncio.Event()
-            
-            # Run polling in the background task
-            polling_task = asyncio.create_task(
-                self.application.run_polling(
-                    allowed_updates=None,  # Receive all update types
-                    drop_pending_updates=True,
-                    stop_signals=[]  # We'll handle stop signals ourselves
-                )
+            logger.info("Starting bot with run_polling...")
+            # Use run_polling which handles its own event loop
+            self.application.run_polling(
+                allowed_updates=None,
+                drop_pending_updates=True,
+                stop_signals=None  # Let the main process handle signals
             )
             
-            logger.info("Bot polling started successfully")
-            
-            # Wait for either the stop event or the polling task to complete
-            await asyncio.gather(
-                self.stop_event.wait(),
-                polling_task,
-                return_exceptions=True
-            )
             logger.info("Bot polling stopped")
         except Exception as e:
             logger.error(f"Error running bot application: {e}", exc_info=True)
             raise
     
-    async def shutdown(self) -> None:
+    def shutdown(self) -> None:
         """Shutdown the bot application."""
         try:
-            if self.stop_event:
-                # Signal the run method to stop
-                self.stop_event.set()
+            logger.info("Shutting down bot application...")
             
             if self.application:
-                logger.info("Shutting down bot application...")
-                # Stop the application (run_polling handles the rest)
-                await self.application.stop()
-                logger.info("Bot application shut down successfully")
+                # The application should handle its own shutdown when run_polling stops
+                logger.info("Bot application will shut down automatically")
+                
+            logger.info("Bot application shut down successfully")
         except Exception as e:
             logger.error(f"Error shutting down bot application: {e}")
 
