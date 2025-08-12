@@ -176,21 +176,22 @@ async def decode_vin(request: VINRequest):
     
     if SessionLocal is None or VINDecoderService is None:
         # Return mock decoded data if services are not available
+        mock_vehicle = {
+            "id": 3,
+            "vin": request.vin.upper(),
+            "manufacturer": "Mock Manufacturer",
+            "model": "Mock Model",
+            "year": 2023,
+            "vehicle_type": "Sedan",
+            "engine_info": "Mock Engine",
+            "fuel_type": "Gasoline",
+            "decoded_at": datetime.utcnow().isoformat(),
+            "user_id": 1,
+            "raw_data": {"mock": True}
+        }
         return {
             "success": True,
-            "vehicle": {
-                "id": 3,
-                "vin": request.vin.upper(),
-                "manufacturer": "Mock Manufacturer",
-                "model": "Mock Model",
-                "year": 2023,
-                "vehicle_type": "Sedan",
-                "engine_info": "Mock Engine",
-                "fuel_type": "Gasoline",
-                "decoded_at": datetime.utcnow().isoformat(),
-                "user_id": 1,
-                "raw_data": {"mock": True}
-            }
+            "vehicle": mock_vehicle
         }
     
     db = SessionLocal()
@@ -209,21 +210,23 @@ async def decode_vin(request: VINRequest):
         if not vehicle:
             raise HTTPException(status_code=400, detail="Failed to decode VIN")
         
+        vehicle_response = {
+            "id": vehicle.id,
+            "vin": vehicle.vin,
+            "manufacturer": vehicle.manufacturer or "Unknown",
+            "model": vehicle.model or "Unknown",
+            "year": vehicle.year or 0,
+            "vehicle_type": vehicle.vehicle_type or "Unknown",
+            "engine_info": vehicle.engine_info,
+            "fuel_type": vehicle.fuel_type,
+            "decoded_at": vehicle.decoded_at.isoformat() if vehicle.decoded_at else datetime.utcnow().isoformat(),
+            "user_id": vehicle.user_id,
+            "raw_data": vehicle.raw_data or {}
+        }
+        
         return {
             "success": True,
-            "vehicle": {
-                "id": vehicle.id,
-                "vin": vehicle.vin,
-                "manufacturer": vehicle.manufacturer or "Unknown",
-                "model": vehicle.model or "Unknown",
-                "year": vehicle.year or 0,
-                "vehicle_type": vehicle.vehicle_type or "Unknown",
-                "engine_info": vehicle.engine_info,
-                "fuel_type": vehicle.fuel_type,
-                "decoded_at": vehicle.decoded_at,
-                "user_id": vehicle.user_id,
-                "raw_data": vehicle.raw_data or {}
-            }
+            "vehicle": vehicle_response
         }
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))

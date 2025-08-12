@@ -32,17 +32,37 @@ services:
     restart: unless-stopped
     command: python main.py
 
+  api:
+    build: .
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "5000:5000"
+    environment:
+      DATABASE_URL: postgresql+asyncpg://postgres:postgres@postgres:5432/vin_decoder
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
+      NHTSA_BASE_URL: ${NHTSA_BASE_URL:-https://vpic.nhtsa.dot.gov/api/vehicles}
+      UPSTASH_REDIS_REST_URL: ${UPSTASH_REDIS_REST_URL}
+      UPSTASH_REDIS_REST_TOKEN: ${UPSTASH_REDIS_REST_TOKEN}
+      SENTRY_DSN: ${SENTRY_DSN}
+    restart: unless-stopped
+    command: python -m uvicorn src.presentation.api.domain_api_server:app --host 0.0.0.0 --port 5000
+
   dashboard:
     build: .
     depends_on:
       postgres:
         condition: service_healthy
+      api:
+        condition: service_started
     ports:
       - "8000:8000"
     environment:
       DATABASE_URL: postgresql+asyncpg://postgres:postgres@postgres:5432/vin_decoder
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
       NHTSA_BASE_URL: ${NHTSA_BASE_URL:-https://vpic.nhtsa.dot.gov/api/vehicles}
+      API_BASE_URL: http://api:5000
     restart: unless-stopped
     command: python src/presentation/web_dashboard/run_dashboard.py
 

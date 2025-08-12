@@ -60,3 +60,20 @@ Dockerfile.multi
 README*.md
 INFRASTRUCTURE_GUIDE.md
 docs/
+
+# Cache directories
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+.crush/
+
+# Next.js specific
+src/presentation/web-dashboard-next/.next/
+src/presentation/web-dashboard-next/node_modules/
+src/presentation/web-dashboard-next/.npm/
+src/presentation/web-dashboard-next/out/
+
+# Temporary files
+*.tmp
+*.temp
+tmp_*
