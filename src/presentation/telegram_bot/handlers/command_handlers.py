@@ -105,13 +105,23 @@ class CommandHandlers:
             # Format and send response
             if result.success:
                 # Create a data dictionary that matches what the formatter expects
-                vehicle_data = {
-                    "success": True,
-                    "vin": result.vin,
-                    "attributes": result.attributes or {},
-                    "service": result.service_used,
-                    "raw_data": result.raw_data if hasattr(result, "raw_data") else {},
-                }
+                # Use raw_response if available (for cached data), otherwise build from result
+                if result.raw_response:
+                    vehicle_data = result.raw_response
+                    # Ensure required fields are present
+                    if "vin" not in vehicle_data:
+                        vehicle_data["vin"] = result.vin
+                    if "service" not in vehicle_data:
+                        vehicle_data["service"] = result.service_used
+                    if "attributes" not in vehicle_data:
+                        vehicle_data["attributes"] = result.attributes or {}
+                else:
+                    vehicle_data = {
+                        "success": True,
+                        "vin": result.vin,
+                        "attributes": result.attributes or {},
+                        "service": result.service_used,
+                    }
 
                 # Use our enhanced vehicle formatter
                 response_text = VehicleFormatter.format_summary(vehicle_data)

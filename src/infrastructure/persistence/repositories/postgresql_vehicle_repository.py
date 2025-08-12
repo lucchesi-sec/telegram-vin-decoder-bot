@@ -230,12 +230,18 @@ class PostgreSQLVehicleRepository(VehicleRepository):
         
         from src.domain.vehicle.value_objects import ModelYear
         
+        # Extract attributes from raw_data if available
+        attributes = {}
+        if model.raw_data:
+            attributes = model.raw_data.get("attributes", {})
+        
         return Vehicle(
             id=model.id,
             vin=VINNumber(model.vin),
             manufacturer=model.manufacturer or "",
             model=model.model or "",
             model_year=ModelYear(model.year) if model.year else None,
+            attributes=attributes,  # Include attributes
             basic_info=basic_info,
             specifications=specifications,
             safety_ratings=model.safety_ratings,

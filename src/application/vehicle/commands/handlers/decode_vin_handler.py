@@ -180,10 +180,18 @@ class DecodeVINHandler(CommandHandler[DecodeVINCommand, DecodeResult]):
     
     def _vehicle_to_decode_result(self, vehicle: Vehicle) -> DecodeResult:
         """Convert a vehicle entity to a decode result."""
-        # Get service used from the most recent decode attempt
-        service_used = "Unknown"
-        if vehicle.decode_history:
-            service_used = vehicle.decode_history[-1].service_used
+        # Get service used from the vehicle or decode history
+        service_used = vehicle.service_used or "Unknown"
+        if not service_used or service_used == "Unknown":
+            if vehicle.decode_history:
+                service_used = vehicle.decode_history[-1].service_used
+        
+        # For cached responses, include raw_data in the result
+        result_data = vehicle.raw_data if vehicle.raw_data else {}
+        
+        # Ensure attributes are present in the result data
+        if "attributes" not in result_data and vehicle.attributes:
+            result_data["attributes"] = vehicle.attributes
             
         return DecodeResult(
             vin=str(vehicle.vin),
@@ -192,7 +200,8 @@ class DecodeVINHandler(CommandHandler[DecodeVINCommand, DecodeResult]):
             model=vehicle.model,
             model_year=vehicle.model_year.value if vehicle.model_year else None,
             attributes=vehicle.attributes,
-            service_used=service_used
+            service_used=service_used,
+            raw_response=result_data  # Use raw_response for full data
         )
 
 
