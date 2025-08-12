@@ -1,14 +1,14 @@
 """Vehicle command handlers."""
 
 import logging
-from typing import Optional, Any
-from datetime import datetime
+from typing import Any
+from datetime import datetime, timezone
 from src.application.shared.command_bus import CommandHandler
 from src.application.vehicle.commands import DecodeVINCommand
 from src.domain.vehicle.repositories import VehicleRepository
 from src.domain.vehicle.value_objects import DecodeResult, VINNumber
-from src.domain.vehicle.entities.vehicle import Vehicle
-from src.domain.vehicle.events import VehicleDecodedEvent, DecodeFailedEvent
+from src.domain.vehicle.entities.vehicle import Vehicle, DecodeAttempt
+from src.domain.vehicle.events import DecodeFailedEvent
 from src.application.shared.event_bus import EventBus
 
 logger = logging.getLogger(__name__)
@@ -44,14 +44,12 @@ class DecodeVINHandler(CommandHandler[DecodeVINCommand, DecodeResult]):
             
             # Perform decoding with fallback pattern
             raw_result = None
-            decoder_used = None
             
             # Try primary decoder (auto.dev)
             if primary_decoder.client.api_key:
                 try:
                     self.logger.info(f"Attempting to decode VIN {command.vin} with auto.dev")
                     raw_result = await primary_decoder.decode(command.vin)
-                    decoder_used = primary_decoder
                     self.logger.info(f"Successfully decoded VIN {command.vin} with auto.dev")
                 except Exception as e:
                     self.logger.warning(f"auto.dev decode failed for VIN {command.vin}: {e}, falling back to NHTSA")
@@ -61,7 +59,6 @@ class DecodeVINHandler(CommandHandler[DecodeVINCommand, DecodeResult]):
                 try:
                     self.logger.info(f"Attempting to decode VIN {command.vin} with NHTSA")
                     raw_result = await fallback_decoder.decode(command.vin)
-                    decoder_used = fallback_decoder
                     self.logger.info(f"Successfully decoded VIN {command.vin} with NHTSA")
                 except Exception as e:
                     # Both decoders failed
@@ -70,7 +67,7 @@ class DecodeVINHandler(CommandHandler[DecodeVINCommand, DecodeResult]):
                         vin=command.vin.value,
                         service_used="auto.dev/NHTSA",
                         error_message=str(e),
-                        failed_at=datetime.utcnow()
+                        failed_at=datetime.now(timezone.utc)
                     ))
                     raise ApplicationException("Unable to decode VIN", cause=e)
             
@@ -173,7 +170,7 @@ class DecodeVINHandler(CommandHandler[DecodeVINCommand, DecodeResult]):
         
         # Add successful decode attempt
         attempt = DecodeAttempt(
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(timezone.utc),
             service_used=raw_result.get("service", "Unknown"),
             success=True
         )

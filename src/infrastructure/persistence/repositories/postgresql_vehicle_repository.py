@@ -46,9 +46,9 @@ class PostgreSQLVehicleRepository(VehicleRepository):
                     .where(VehicleModel.id == vehicle.id)
                     .values(
                         vin=vehicle.vin.value,
-                        make=vehicle.basic_info.make if vehicle.basic_info else None,
+                        make=vehicle.basic_info.manufacturer if vehicle.basic_info else None,
                         model=vehicle.basic_info.model if vehicle.basic_info else None,
-                        year=vehicle.basic_info.year if vehicle.basic_info else None,
+                        year=vehicle.basic_info.model_year if vehicle.basic_info else None,
                         manufacturer=vehicle.basic_info.manufacturer if vehicle.basic_info else None,
                         service_used=vehicle.service_used,
                         raw_data=vehicle.raw_data,
@@ -64,9 +64,9 @@ class PostgreSQLVehicleRepository(VehicleRepository):
                 vehicle_model = VehicleModel(
                     id=vehicle.id,
                     vin=vehicle.vin.value,
-                    make=vehicle.basic_info.make if vehicle.basic_info else None,
+                    make=vehicle.basic_info.manufacturer if vehicle.basic_info else None,
                     model=vehicle.basic_info.model if vehicle.basic_info else None,
-                    year=vehicle.basic_info.year if vehicle.basic_info else None,
+                    year=vehicle.basic_info.model_year if vehicle.basic_info else None,
                     manufacturer=vehicle.basic_info.manufacturer if vehicle.basic_info else None,
                     service_used=vehicle.service_used,
                     raw_data=vehicle.raw_data,
@@ -193,45 +193,49 @@ class PostgreSQLVehicleRepository(VehicleRepository):
         basic_info = None
         if model.basic_info:
             basic_info = BasicInfo(
-                make=model.basic_info.get('make'),
-                model=model.basic_info.get('model'),
-                year=model.basic_info.get('year'),
-                manufacturer=model.basic_info.get('manufacturer'),
-                vehicle_type=model.basic_info.get('vehicle_type'),
-                body_style=model.basic_info.get('body_style'),
-                doors=model.basic_info.get('doors'),
-                drive_type=model.basic_info.get('drive_type'),
-                fuel_type=model.basic_info.get('fuel_type'),
-                plant_country=model.basic_info.get('plant_country'),
-                plant_city=model.basic_info.get('plant_city'),
-                plant_state=model.basic_info.get('plant_state')
+                vin=model.basic_info.get('vin', ''),
+                manufacturer=model.basic_info.get('manufacturer', ''),
+                model=model.basic_info.get('model', ''),
+                model_year=model.basic_info.get('model_year', 0),
+                body_class=model.basic_info.get('body_class', ''),
+                vehicle_type=model.basic_info.get('vehicle_type', ''),
+                gross_vehicle_weight_rating=model.basic_info.get('gross_vehicle_weight_rating', ''),
+                manufacturer_address=model.basic_info.get('manufacturer_address', ''),
+                plant_city=model.basic_info.get('plant_city', ''),
+                plant_country=model.basic_info.get('plant_country', ''),
+                plant_state=model.basic_info.get('plant_state', '')
             )
         
         specifications = None
         if model.specifications:
             specifications = Specifications(
-                engine_displacement=model.specifications.get('engine_displacement'),
+                displacement_cc=model.specifications.get('displacement_cc'),
+                displacement_ci=model.specifications.get('displacement_ci'),
+                displacement_l=model.specifications.get('displacement_l'),
                 engine_cylinders=model.specifications.get('engine_cylinders'),
-                engine_model=model.specifications.get('engine_model'),
-                engine_power_hp=model.specifications.get('engine_power_hp'),
-                engine_power_kw=model.specifications.get('engine_power_kw'),
-                transmission_type=model.specifications.get('transmission_type'),
-                transmission_speeds=model.specifications.get('transmission_speeds'),
-                gross_vehicle_weight_rating=model.specifications.get('gross_vehicle_weight_rating'),
-                curb_weight=model.specifications.get('curb_weight'),
-                wheelbase=model.specifications.get('wheelbase'),
-                bed_length=model.specifications.get('bed_length'),
-                bed_type=model.specifications.get('bed_type'),
-                cab_type=model.specifications.get('cab_type'),
-                trailer_type=model.specifications.get('trailer_type'),
-                trailer_body_type=model.specifications.get('trailer_body_type'),
-                trailer_length=model.specifications.get('trailer_length'),
-                other_trailer_info=model.specifications.get('other_trailer_info')
+                engine_model=model.specifications.get('engine_model', ''),
+                fuel_type_primary=model.specifications.get('fuel_type_primary', ''),
+                electrification_level=model.specifications.get('electrification_level', ''),
+                other_engine_info=model.specifications.get('other_engine_info', ''),
+                turbo=model.specifications.get('turbo'),
+                drive_type=model.specifications.get('drive_type', ''),
+                transmission_style=model.specifications.get('transmission_style', ''),
+                transmission_speeds=model.specifications.get('transmission_speeds', ''),
+                doors=model.specifications.get('doors'),
+                seats=model.specifications.get('seats'),
+                wheel_base_type=model.specifications.get('wheel_base_type', ''),
+                bed_type=model.specifications.get('bed_type', ''),
+                cab_type=model.specifications.get('cab_type', '')
             )
+        
+        from src.domain.vehicle.value_objects import ModelYear
         
         return Vehicle(
             id=model.id,
             vin=VINNumber(model.vin),
+            manufacturer=model.manufacturer or "",
+            model=model.model or "",
+            model_year=ModelYear(model.year) if model.year else None,
             basic_info=basic_info,
             specifications=specifications,
             safety_ratings=model.safety_ratings,
@@ -254,17 +258,16 @@ class PostgreSQLVehicleRepository(VehicleRepository):
             return None
         
         return {
-            'make': basic_info.make,
-            'model': basic_info.model,
-            'year': basic_info.year,
+            'vin': basic_info.vin,
             'manufacturer': basic_info.manufacturer,
+            'model': basic_info.model,
+            'model_year': basic_info.model_year,
+            'body_class': basic_info.body_class,
             'vehicle_type': basic_info.vehicle_type,
-            'body_style': basic_info.body_style,
-            'doors': basic_info.doors,
-            'drive_type': basic_info.drive_type,
-            'fuel_type': basic_info.fuel_type,
-            'plant_country': basic_info.plant_country,
+            'gross_vehicle_weight_rating': basic_info.gross_vehicle_weight_rating,
+            'manufacturer_address': basic_info.manufacturer_address,
             'plant_city': basic_info.plant_city,
+            'plant_country': basic_info.plant_country,
             'plant_state': basic_info.plant_state
         }
     
@@ -281,21 +284,21 @@ class PostgreSQLVehicleRepository(VehicleRepository):
             return None
         
         return {
-            'engine_displacement': specs.engine_displacement,
+            'displacement_cc': specs.displacement_cc,
+            'displacement_ci': specs.displacement_ci,
+            'displacement_l': specs.displacement_l,
             'engine_cylinders': specs.engine_cylinders,
             'engine_model': specs.engine_model,
-            'engine_power_hp': specs.engine_power_hp,
-            'engine_power_kw': specs.engine_power_kw,
-            'transmission_type': specs.transmission_type,
+            'fuel_type_primary': specs.fuel_type_primary,
+            'electrification_level': specs.electrification_level,
+            'other_engine_info': specs.other_engine_info,
+            'turbo': specs.turbo,
+            'drive_type': specs.drive_type,
+            'transmission_style': specs.transmission_style,
             'transmission_speeds': specs.transmission_speeds,
-            'gross_vehicle_weight_rating': specs.gross_vehicle_weight_rating,
-            'curb_weight': specs.curb_weight,
-            'wheelbase': specs.wheelbase,
-            'bed_length': specs.bed_length,
+            'doors': specs.doors,
+            'seats': specs.seats,
+            'wheel_base_type': specs.wheel_base_type,
             'bed_type': specs.bed_type,
-            'cab_type': specs.cab_type,
-            'trailer_type': specs.trailer_type,
-            'trailer_body_type': specs.trailer_body_type,
-            'trailer_length': specs.trailer_length,
-            'other_trailer_info': specs.other_trailer_info
+            'cab_type': specs.cab_type
         }
