@@ -5,12 +5,13 @@ This document provides comprehensive API documentation for the VIN Decoder Bot, 
 
 ## Table of Contents
 1. [Telegram Bot Commands](#telegram-bot-commands)
-2. [Internal Service APIs](#internal-service-apis)
-3. [External API Integrations](#external-api-integrations)
-4. [Event APIs](#event-apis)
-5. [Error Codes](#error-codes)
-6. [Rate Limiting](#rate-limiting)
-7. [Future REST API](#future-rest-api)
+2. [Web Dashboard REST API](#web-dashboard-rest-api)
+3. [Internal Service APIs](#internal-service-apis)
+4. [External API Integrations](#external-api-integrations)
+5. [Event APIs](#event-apis)
+6. [Error Codes](#error-codes)
+7. [Rate Limiting](#rate-limiting)
+8. [Future Enhancements](#future-enhancements)
 
 ## Telegram Bot Commands
 
@@ -198,6 +199,193 @@ Shows saved vehicles.
 - `history_limit` - Set history size (5, 10, 20)
 - `auto_save` - Toggle auto-save (on, off)
 - `notifications` - Toggle notifications (on, off)
+
+## Web Dashboard REST API
+
+The web dashboard exposes a REST API built with FastAPI for managing vehicles and providing data to the Next.js frontend.
+
+### Base URL
+- Development: `http://localhost:5000`
+- Production: `https://api.yourdomain.com`
+
+### Authentication
+Currently, the API is open for the dashboard. Future versions will implement JWT authentication.
+
+### Endpoints
+
+#### `GET /health`
+Health check endpoint.
+
+**Response:**
+```json
+{
+  "status": "healthy",
+  "timestamp": "2025-01-12T15:30:00Z"
+}
+```
+
+#### `GET /api/vehicles`
+Retrieve paginated list of decoded vehicles.
+
+**Query Parameters:**
+- `page` (integer, default: 1): Page number
+- `limit` (integer, default: 10): Items per page
+
+**Response:**
+```json
+{
+  "vehicles": [
+    {
+      "id": 1,
+      "vin": "1HGCM82633A004352",
+      "manufacturer": "Honda",
+      "model": "Accord",
+      "year": 2003,
+      "vehicle_type": "Sedan",
+      "engine_info": "2.4L 4-cylinder",
+      "fuel_type": "Gasoline",
+      "decoded_at": "2025-01-12T10:30:00Z",
+      "user_id": 1,
+      "raw_data": {}
+    }
+  ],
+  "total": 150,
+  "page": 1,
+  "total_pages": 15
+}
+```
+
+#### `GET /api/vehicles/{vin}`
+Retrieve specific vehicle by VIN.
+
+**Path Parameters:**
+- `vin` (string): 17-character VIN
+
+**Response:**
+```json
+{
+  "id": 1,
+  "vin": "1HGCM82633A004352",
+  "manufacturer": "Honda",
+  "model": "Accord",
+  "year": 2003,
+  "vehicle_type": "Sedan",
+  "engine_info": "2.4L 4-cylinder",
+  "fuel_type": "Gasoline",
+  "decoded_at": "2025-01-12T10:30:00Z",
+  "user_id": 1,
+  "raw_data": {
+    "Make": "Honda",
+    "Model": "Accord",
+    "ModelYear": "2003",
+    "PlantCity": "Marysville",
+    "PlantCountry": "United States"
+  }
+}
+```
+
+#### `POST /api/decode`
+Decode a new VIN.
+
+**Request Body:**
+```json
+{
+  "vin": "1HGCM82633A004352"
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "vehicle": {
+    "id": 1,
+    "vin": "1HGCM82633A004352",
+    "manufacturer": "Honda",
+    "model": "Accord",
+    "year": 2003,
+    "vehicle_type": "Sedan",
+    "engine_info": "2.4L 4-cylinder",
+    "fuel_type": "Gasoline",
+    "decoded_at": "2025-01-12T10:30:00Z"
+  }
+}
+```
+
+**Error Response:**
+```json
+{
+  "success": false,
+  "error": "Invalid VIN format",
+  "message": "VIN must be exactly 17 characters"
+}
+```
+
+#### `DELETE /api/vehicles/{vehicle_id}`
+Delete a vehicle record.
+
+**Path Parameters:**
+- `vehicle_id` (integer): Vehicle database ID
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Vehicle deleted successfully"
+}
+```
+
+#### `GET /api/stats`
+Get dashboard statistics.
+
+**Response:**
+```json
+{
+  "total_vehicles": 150,
+  "unique_manufacturers": 23,
+  "recent_decodes": 12,
+  "popular_manufacturers": [
+    {"name": "Honda", "count": 45},
+    {"name": "Toyota", "count": 38},
+    {"name": "Ford", "count": 27}
+  ],
+  "decodes_by_day": [
+    {"date": "2025-01-12", "count": 12},
+    {"date": "2025-01-11", "count": 18},
+    {"date": "2025-01-10", "count": 15}
+  ]
+}
+```
+
+### CORS Configuration
+
+The API allows CORS from the following origins:
+- `http://localhost:3000` (Next.js development)
+- `http://localhost:3001` (Next.js alternative port)
+- Production frontend domain
+
+### Error Responses
+
+All error responses follow this format:
+```json
+{
+  "detail": "Error message",
+  "status_code": 400,
+  "type": "validation_error"
+}
+```
+
+### Rate Limiting
+
+- **Decode endpoint**: 100 requests per minute per IP
+- **Other endpoints**: 1000 requests per minute per IP
+
+### WebSocket Support (Future)
+
+Future versions will support WebSocket connections for real-time updates:
+- Live vehicle decode notifications
+- Statistics updates
+- User activity streams
 
 ## Internal Service APIs
 

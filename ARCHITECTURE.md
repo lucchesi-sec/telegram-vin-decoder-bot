@@ -40,13 +40,27 @@ Provide instant, accurate vehicle information through VIN decoding via a user-fr
 - Comprehensive vehicle specification reporting
 
 ### Technical Stack
+
+#### Backend
 - **Language**: Python 3.9+
 - **Framework**: python-telegram-bot (async)
+- **Web Framework**: FastAPI (REST API)
 - **Architecture**: DDD + Clean Architecture
 - **DI Container**: dependency-injector
+- **Database**: PostgreSQL (production), SQLite (development)
+- **ORM**: SQLAlchemy
 - **External APIs**: NHTSA, Auto.dev
 - **Testing**: pytest, pytest-asyncio
 - **Configuration**: pydantic-settings
+
+#### Frontend (Web Dashboard)
+- **Framework**: Next.js 15.4 (React 19)
+- **Language**: TypeScript
+- **UI Components**: shadcn/ui (Radix UI primitives)
+- **Styling**: Tailwind CSS 3.4
+- **State Management**: React hooks
+- **Build Tool**: Next.js with Turbo
+- **Package Manager**: npm
 
 ## Architectural Principles
 
@@ -82,7 +96,7 @@ Provide instant, accurate vehicle information through VIN decoding via a user-fr
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                    Presentation Layer                       │
-│         (Telegram Bot, REST API, CLI, Web UI)              │
+│    (Telegram Bot, REST API, Next.js Dashboard, CLI)        │
 ├─────────────────────────────────────────────────────────────┤
 │                    Application Layer                        │
 │     (Use Cases, Command Handlers, Query Handlers)          │
@@ -159,10 +173,28 @@ graph TB
 - **Responsibility**: Core application logic and orchestration
 - **Communication**: HTTPS REST/Webhook with Telegram
 
+#### Web Dashboard (Next.js)
+- **Technology**: Next.js 15.4, React 19, TypeScript
+- **Responsibility**: Web-based vehicle management interface
+- **Communication**: REST API calls to FastAPI backend
+- **UI Framework**: shadcn/ui with Tailwind CSS
+- **Features**: Real-time statistics, VIN decoding, search, vehicle management
+
+#### REST API (FastAPI)
+- **Technology**: FastAPI, SQLAlchemy
+- **Responsibility**: HTTP API for web dashboard and external integrations
+- **Communication**: JSON REST over HTTPS
+- **Endpoints**: Vehicle CRUD, VIN decoding, statistics
+
 #### Dependency Injection Container
 - **Technology**: dependency-injector
 - **Responsibility**: Component wiring and lifecycle management
 - **Pattern**: Constructor injection
+
+#### Database Layer
+- **Technology**: PostgreSQL (production), SQLite (dev)
+- **Responsibility**: Persistent storage for vehicles and users
+- **ORM**: SQLAlchemy for database abstraction
 
 #### In-Memory Cache
 - **Technology**: Python collections
@@ -181,6 +213,8 @@ graph TB
         CallbackHandler[Callback Handlers]
         MsgAdapter[Message Adapter]
         KbAdapter[Keyboard Adapter]
+        WebDashboard[Next.js Dashboard]
+        RestAPI[FastAPI REST Service]
     end
     
     subgraph "Application Layer"
@@ -243,11 +277,29 @@ graph TB
 - **Event Bus**: Concrete event publishing/subscription
 
 #### Presentation Components
+
+##### Telegram Bot Components
 - **Bot Application**: Main Telegram bot orchestrator
 - **Command Handlers**: Handle Telegram commands (/start, /vin)
 - **Callback Handlers**: Handle inline keyboard interactions
 - **Message Formatters**: Rich message composition
 - **Keyboard Builders**: Dynamic UI generation
+
+##### Web Dashboard Components (Next.js)
+- **Page Components**: Server and client React components
+- **UI Components**: shadcn/ui component library
+- **API Client**: Fetch-based REST client for backend communication
+- **State Management**: React hooks for local state
+- **Table Component**: Paginated vehicle display with search
+- **Dialog Components**: Modal interfaces for VIN decoding and details
+- **Card Components**: Statistics and data visualization
+
+##### REST API Components (FastAPI)
+- **API Router**: HTTP endpoint routing and validation
+- **Request Handlers**: Process HTTP requests and responses
+- **CORS Middleware**: Cross-origin resource sharing configuration
+- **Response Models**: Pydantic models for API responses
+- **Error Handlers**: Standardized error responses
 
 ## Data Architecture
 
@@ -394,6 +446,171 @@ graph TB
 - Liveness probe: Bot connection status
 - Readiness probe: External service availability
 - Dependency health aggregation
+
+## Web Dashboard Architecture
+
+### Frontend Architecture (Next.js)
+
+#### Technology Stack
+- **Framework**: Next.js 15.4 with App Router
+- **UI Library**: React 19 with TypeScript
+- **Component Library**: shadcn/ui (built on Radix UI)
+- **Styling**: Tailwind CSS 3.4 with custom design system
+- **State Management**: React hooks (useState, useEffect)
+- **Data Fetching**: Native fetch API with async/await
+
+#### Component Structure
+```
+web-dashboard-next/
+├── app/                      # Next.js App Router
+│   ├── page.tsx             # Main dashboard page
+│   ├── layout.tsx           # Root layout with metadata
+│   └── globals.css          # Global styles and Tailwind
+├── components/
+│   └── ui/                  # shadcn/ui components
+│       ├── button.tsx       # Button component
+│       ├── card.tsx         # Card component
+│       ├── dialog.tsx       # Modal dialog
+│       ├── table.tsx        # Data table
+│       ├── tabs.tsx         # Tab navigation
+│       ├── input.tsx        # Form inputs
+│       └── badge.tsx        # Status badges
+├── lib/
+│   └── utils.ts            # Utility functions (cn)
+└── public/                  # Static assets
+```
+
+#### Key Features
+1. **Real-time Statistics Dashboard**
+   - Total vehicles card
+   - Unique manufacturers count
+   - Recent decodes (24h) tracking
+
+2. **Vehicle Management Table**
+   - Paginated data display
+   - Search/filter functionality
+   - Sort by columns
+   - Inline actions (view, delete)
+
+3. **VIN Decoding Interface**
+   - Modal-based input form
+   - Real-time validation
+   - Error handling with user feedback
+   - Success notifications
+
+4. **Vehicle Details View**
+   - Tabbed interface (Basic, Technical, Raw Data)
+   - Comprehensive information display
+   - JSON data viewer for raw responses
+
+#### Design System
+- **Color Palette**: Purple to pink gradient theme
+- **Typography**: System font stack with fallbacks
+- **Spacing**: Consistent 4px grid system
+- **Components**: Modern card-based layout
+- **Responsive**: Mobile-first responsive design
+- **Dark Mode**: CSS variables for theme switching (ready)
+
+#### Performance Optimizations
+- **Server Components**: Default for static content
+- **Client Components**: Only for interactive features
+- **Code Splitting**: Automatic per-route splitting
+- **Image Optimization**: Next.js Image component
+- **Font Optimization**: System fonts for performance
+
+### API Integration
+
+#### REST API Endpoints
+```typescript
+// Vehicle endpoints
+GET    /api/vehicles         // List vehicles (paginated)
+GET    /api/vehicles/:id     // Get single vehicle
+POST   /api/decode           // Decode new VIN
+DELETE /api/vehicles/:id     // Delete vehicle
+GET    /api/stats           // Dashboard statistics
+
+// Health checks
+GET    /health              // Service health status
+```
+
+#### Data Models
+```typescript
+interface Vehicle {
+  id: number
+  vin: string
+  manufacturer: string
+  model: string
+  year: number
+  vehicle_type: string
+  engine_info: string
+  fuel_type: string
+  decoded_at: string
+  user_id: number
+  raw_data: any
+}
+
+interface Stats {
+  total_vehicles: number
+  unique_manufacturers: number
+  recent_decodes: number
+}
+```
+
+### Deployment Architecture
+
+#### Development Setup
+```bash
+# Install dependencies
+cd src/presentation/web-dashboard-next
+npm install
+
+# Run development server
+npm run dev  # Runs on http://localhost:3000
+```
+
+#### Production Build
+```bash
+# Build for production
+npm run build
+
+# Start production server
+npm start
+```
+
+#### Docker Deployment
+```dockerfile
+FROM node:20-alpine
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci --only=production
+COPY . .
+RUN npm run build
+EXPOSE 3000
+CMD ["npm", "start"]
+```
+
+### Migration from Legacy Dashboard
+
+#### Legacy Stack (Deprecated)
+- Vanilla JavaScript with jQuery-like patterns
+- Server-side HTML templates
+- CSS with custom styles
+- FastAPI template rendering
+
+#### New Stack (Current)
+- React with TypeScript
+- shadcn/ui component library
+- Tailwind CSS utility-first styling
+- Next.js with API routes
+- Server and Client components
+
+#### Migration Benefits
+- **Type Safety**: Full TypeScript support
+- **Component Reusability**: Modular UI components
+- **Better UX**: Smoother interactions and loading states
+- **Modern Tooling**: Hot reload, fast refresh, better DX
+- **Performance**: Optimized bundle sizes and loading
+- **Maintainability**: Clear component structure
 
 ## Security Architecture
 

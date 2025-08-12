@@ -5,6 +5,7 @@ A Telegram bot that decodes Vehicle Identification Numbers (VINs) using a Domain
 ## Features
 
 - **Automatic VIN Detection**: Just paste a VIN and the bot automatically detects and decodes it!
+- **Modern Web Dashboard**: Beautiful Next.js dashboard with shadcn/ui components
 - Decodes VINs using official databases (NHTSA, Auto.dev)
 - Domain-Driven Design with clear bounded contexts
 - Clean architecture with separation of concerns
@@ -106,6 +107,34 @@ For more detailed vehicle information, you can switch to Auto.dev:
 To use Auto.dev:
 1. Get an API key from https://auto.dev/
 2. Add it to your `.env` file
+
+## Web Dashboard
+
+The project includes a modern web dashboard built with Next.js and shadcn/ui for managing decoded vehicles.
+
+### Features
+- 📊 Real-time statistics and metrics
+- 🔍 Search and filter vehicles
+- ➕ Decode VINs via web interface
+- 📱 Fully responsive design
+- 🎨 Beautiful UI with shadcn/ui components
+
+### Running the Dashboard
+
+#### Frontend (Next.js):
+```bash
+cd src/presentation/web-dashboard-next
+npm install
+npm run dev  # Available at http://localhost:3000
+```
+
+#### Backend API (FastAPI):
+```bash
+python src/presentation/web_dashboard/run_dashboard.py
+# API available at http://localhost:5000
+```
+
+For detailed dashboard documentation, see [README_DASHBOARD.md](README_DASHBOARD.md).
 
 ## Configuration
 
