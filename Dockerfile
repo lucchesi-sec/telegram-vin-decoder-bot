@@ -33,10 +33,12 @@ RUN chmod +x entrypoint.sh web-entrypoint.sh
 # Build Next.js app
 WORKDIR /app/src/presentation/web-dashboard-next
 COPY src/presentation/web-dashboard-next/package*.json ./
-RUN npm ci --only=production && npm cache clean --force
+RUN npm ci
 COPY src/presentation/web-dashboard-next/ ./
 RUN npm run build
-RUN rm -rf node_modules && npm ci --only=production --omit=dev && npm cache clean --force
+
+# Remove dev dependencies to reduce size
+RUN npm prune --production
 
 # Return to main app directory
 WORKDIR /app
