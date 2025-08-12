@@ -27,6 +27,7 @@ from src.presentation.telegram_bot.adapters.message_adapter import MessageAdapte
 from src.presentation.telegram_bot.handlers.callback_handlers import CallbackHandlers
 from src.presentation.telegram_bot.handlers.command_handlers import CommandHandlers
 from src.presentation.telegram_bot.utils.vin_validator import VINValidator
+from src.infrastructure.persistence.cache.message_cache import MessageCache
 
 logger = logging.getLogger(__name__)
 
@@ -46,6 +47,7 @@ class BotApplication:
         ],
         message_adapter: MessageAdapter = Provide[Container.message_adapter],
         keyboard_adapter: KeyboardAdapter = Provide[Container.keyboard_adapter],
+        message_cache: Optional[MessageCache] = Provide[Container.message_cache],
     ):
         """Initialize the bot application.
 
@@ -55,12 +57,14 @@ class BotApplication:
             user_service: User application service
             message_adapter: Message formatting adapter
             keyboard_adapter: Keyboard creation adapter
+            message_cache: Optional message cache for performance
         """
         self.settings = settings
         self.vehicle_service = vehicle_service
         self.user_service = user_service
         self.message_adapter = message_adapter
         self.keyboard_adapter = keyboard_adapter
+        self.message_cache = message_cache
         self.application = None
         self.stop_event: Optional[asyncio.Event] = None
         self.command_handlers = None
@@ -88,6 +92,7 @@ class BotApplication:
                 user_service=self.user_service,
                 message_adapter=self.message_adapter,
                 keyboard_adapter=self.keyboard_adapter,
+                message_cache=self.message_cache,
             )
 
             logger.info("Creating callback handlers...")
@@ -96,6 +101,7 @@ class BotApplication:
                 user_service=self.user_service,
                 message_adapter=self.message_adapter,
                 keyboard_adapter=self.keyboard_adapter,
+                message_cache=self.message_cache,
             )
 
             # Set up handlers
@@ -287,6 +293,7 @@ def create_bot_application(
     user_service: UserApplicationService = Provide[Container.user_application_service],
     message_adapter: MessageAdapter = Provide[Container.message_adapter],
     keyboard_adapter: KeyboardAdapter = Provide[Container.keyboard_adapter],
+    message_cache: Optional[MessageCache] = Provide[Container.message_cache],
 ) -> BotApplication:
     """Factory function to create bot application with dependency injection.
 
@@ -296,10 +303,11 @@ def create_bot_application(
         user_service: User application service
         message_adapter: Message formatting adapter
         keyboard_adapter: Keyboard creation adapter
+        message_cache: Optional message cache for performance
 
     Returns:
         Configured BotApplication instance
     """
     return BotApplication(
-        settings, vehicle_service, user_service, message_adapter, keyboard_adapter
+        settings, vehicle_service, user_service, message_adapter, keyboard_adapter, message_cache
     )

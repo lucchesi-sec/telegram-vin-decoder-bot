@@ -285,3 +285,37 @@ class PremiumFeaturesFormatter:
         lines.append(f"\n_Total: {len(features)} {category} features_")
         
         return "\n".join(lines)
+    
+    @classmethod
+    def format_category_features_paginated(
+        cls, category: str, features: List[str], page: int, total_pages: int, total_features: int
+    ) -> str:
+        """Format features for a specific category with pagination info.
+        
+        Args:
+            category: Category name
+            features: List of features in this page
+            page: Current page number
+            total_pages: Total number of pages
+            total_features: Total number of features in category
+            
+        Returns:
+            Formatted text for Telegram
+        """
+        icon = cls.CATEGORY_ICONS.get(category, "•")
+        lines = []
+        lines.append(f"{icon} *{category.upper()} FEATURES*")
+        lines.append("━" * 25)
+        
+        for feature in features:
+            # Truncate long feature names
+            if len(feature) > 50:
+                feature = feature[:47] + "..."
+            lines.append(f"• {feature}")
+        
+        # Add pagination info
+        if total_pages > 1:
+            lines.append(f"\n📄 _Page {page} of {total_pages}_")
+        lines.append(f"_Total: {total_features} {category} features_")
+        
+        return "\n".join(lines)

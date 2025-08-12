@@ -13,6 +13,8 @@ from src.application.user.services.user_application_service import (
 from src.presentation.telegram_bot.adapters.message_adapter import MessageAdapter
 from src.presentation.telegram_bot.adapters.keyboard_adapter import KeyboardAdapter
 from src.presentation.telegram_bot.formatters.vehicle_formatter import VehicleFormatter
+from src.infrastructure.persistence.cache.message_cache import MessageCache, CachedVehicleFormatter
+from typing import Optional
 
 logger = logging.getLogger(__name__)
 
@@ -26,11 +28,14 @@ class CommandHandlers:
         user_service: UserApplicationService,
         message_adapter: MessageAdapter,
         keyboard_adapter: KeyboardAdapter,
+        message_cache: Optional[MessageCache] = None,
     ):
         self.vehicle_service = vehicle_service
         self.user_service = user_service
         self.message_adapter = message_adapter
         self.keyboard_adapter = keyboard_adapter
+        self.message_cache = message_cache
+        self.cached_formatter = CachedVehicleFormatter(message_cache) if message_cache else None
 
     async def start(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         """Handle the /start command."""
@@ -46,11 +51,7 @@ class CommandHandlers:
 
             # Create action buttons
             keyboard = [
-                [
-                    InlineKeyboardButton(
-                        "🔍 Decode VIN", callback_data="action:decode_vin"
-                    )
-                ],
+                [InlineKeyboardButton("🔍 Decode VIN", callback_data="action:decode_vin")],
                 [InlineKeyboardButton("⚙️ Settings", callback_data="action:settings")],
                 [InlineKeyboardButton("📖 Help", callback_data="action:help")],
             ]
@@ -62,9 +63,7 @@ class CommandHandlers:
             )
         except Exception as e:
             logger.error(f"Error in start command: {e}")
-            await update.message.reply_text(
-                "Sorry, an error occurred. Please try again later."
-            )
+            await update.message.reply_text("Sorry, an error occurred. Please try again later.")
 
     async def vin(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         """Handle the /vin command."""
@@ -81,7 +80,7 @@ class CommandHandlers:
                 username=update.effective_user.username,
                 first_name=update.effective_user.first_name,
                 last_name=update.effective_user.last_name,
-                language_code=getattr(update.effective_user, 'language_code', 'en'),
+                language_code=getattr(update.effective_user, "language_code", "en"),
             )
 
             logger.info(
@@ -123,49 +122,59 @@ class CommandHandlers:
                         "service": result.service_used,
                     }
 
-                # Use our enhanced vehicle formatter
-                response_text = VehicleFormatter.format_summary(vehicle_data)
+                # Use cached formatter if available, otherwise format directly
+                if self.cached_formatter:
+                    response_text = await self.cached_formatter.format_summary_cached(
+                        vehicle_data, VehicleFormatter.format_summary
+                    )
+                else:
+                    response_text = VehicleFormatter.format_summary(vehicle_data)
 
                 # Add service information
                 response_text += f"\n\n🔧 _Decoded by {result.service_used}_"
 
                 # Store vehicle data in context for feature navigation
                 context.user_data["last_vehicle_data"] = vehicle_data
-                
+
                 # Check if there are features to display
-                from src.presentation.telegram_bot.formatters.premium_features_formatter import PremiumFeaturesFormatter
+                from src.presentation.telegram_bot.formatters.premium_features_formatter import (
+                    PremiumFeaturesFormatter,
+                )
+
                 features = PremiumFeaturesFormatter.extract_features(vehicle_data)
-                
+
                 # Add action buttons
                 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 
                 keyboard = []
-                
+
                 # Add features button if features exist
                 if features:
-                    keyboard.append([
-                        InlineKeyboardButton(
-                            f"✨ View Features ({len(features)})", 
-                            callback_data="features:show_categories"
-                        )
-                    ])
-                
-                keyboard.extend([
+                    keyboard.append(
+                        [
+                            InlineKeyboardButton(
+                                f"✨ View Features ({len(features)})",
+                                callback_data="features:show_categories",
+                            )
+                        ]
+                    )
+
+                keyboard.extend(
                     [
-                        InlineKeyboardButton(
-                            "🔄 Refresh", callback_data=f"refresh:{result.vin}"
-                        ),
-                        InlineKeyboardButton(
-                            "📋 Decode Another", callback_data="action:decode_vin"
-                        ),
-                    ],
-                    [
-                        InlineKeyboardButton(
-                            "⚙️ Settings", callback_data="action:settings"
-                        ),
-                        InlineKeyboardButton("❌ Close", callback_data="close"),
-                    ],
-                ])
+                        [
+                            InlineKeyboardButton(
+                                "🔄 Refresh", callback_data=f"refresh:{result.vin}"
+                            ),
+                            InlineKeyboardButton(
+                                "📋 Decode Another", callback_data="action:decode_vin"
+                            ),
+                        ],
+                        [
+                            InlineKeyboardButton("⚙️ Settings", callback_data="action:settings"),
+                            InlineKeyboardButton("❌ Close", callback_data="close"),
+                        ],
+                    ]
+                )
                 reply_markup = InlineKeyboardMarkup(keyboard)
 
                 # Trim message if too long for Telegram (4096 char limit)
@@ -182,11 +191,7 @@ class CommandHandlers:
                 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 
                 keyboard = [
-                    [
-                        InlineKeyboardButton(
-                            "📋 Try Again", callback_data="action:decode_vin"
-                        )
-                    ],
+                    [InlineKeyboardButton("📋 Try Again", callback_data="action:decode_vin")],
                     [InlineKeyboardButton("❓ Help", callback_data="action:help")],
                 ]
                 reply_markup = InlineKeyboardMarkup(keyboard)
@@ -228,13 +233,9 @@ class CommandHandlers:
             )
         except Exception as e:
             logger.error(f"Error in help command: {e}")
-            await update.message.reply_text(
-                "Sorry, an error occurred. Please try again later."
-            )
+            await update.message.reply_text("Sorry, an error occurred. Please try again later.")
 
-    async def settings(
-        self, update: Update, context: ContextTypes.DEFAULT_TYPE
-    ) -> None:
+    async def settings(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         """Handle the /settings command."""
         try:
             from telegram import InlineKeyboardButton, InlineKeyboardMarkup
@@ -245,7 +246,7 @@ class CommandHandlers:
                 username=update.effective_user.username,
                 first_name=update.effective_user.first_name,
                 last_name=update.effective_user.last_name,
-                language_code=getattr(update.effective_user, 'language_code', 'en'),
+                language_code=getattr(update.effective_user, "language_code", "en"),
             )
 
             # Build keyboard - simplified without decoder selection or API key management
@@ -265,9 +266,7 @@ class CommandHandlers:
             )
         except Exception as e:
             logger.error(f"Error in settings command: {e}")
-            await update.message.reply_text(
-                "Sorry, an error occurred. Please try again later."
-            )
+            await update.message.reply_text("Sorry, an error occurred. Please try again later.")
 
     async def history(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         """Handle the /history command."""
@@ -281,11 +280,7 @@ class CommandHandlers:
 
             # Add action buttons
             keyboard = [
-                [
-                    InlineKeyboardButton(
-                        "🔍 Decode VIN", callback_data="action:decode_vin"
-                    )
-                ],
+                [InlineKeyboardButton("🔍 Decode VIN", callback_data="action:decode_vin")],
                 [InlineKeyboardButton("↩️ Back", callback_data="action:start")],
             ]
             reply_markup = InlineKeyboardMarkup(keyboard)
@@ -316,6 +311,4 @@ class CommandHandlers:
             )
         except Exception as e:
             logger.error(f"Error in history command: {e}")
-            await update.message.reply_text(
-                "Sorry, an error occurred. Please try again later."
-            )
+            await update.message.reply_text("Sorry, an error occurred. Please try again later.")

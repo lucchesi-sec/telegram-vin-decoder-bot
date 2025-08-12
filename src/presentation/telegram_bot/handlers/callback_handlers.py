@@ -12,7 +12,11 @@ from src.application.user.services.user_application_service import (
 )
 from src.presentation.telegram_bot.adapters.message_adapter import MessageAdapter
 from src.presentation.telegram_bot.adapters.keyboard_adapter import KeyboardAdapter
-from src.presentation.telegram_bot.formatters.premium_features_formatter import PremiumFeaturesFormatter
+from src.presentation.telegram_bot.formatters.premium_features_formatter import (
+    PremiumFeaturesFormatter,
+)
+from src.infrastructure.persistence.cache.message_cache import MessageCache, CachedVehicleFormatter
+from typing import Optional
 
 logger = logging.getLogger(__name__)
 
@@ -26,6 +30,7 @@ class CallbackHandlers:
         user_service: UserApplicationService,
         message_adapter: MessageAdapter,
         keyboard_adapter: KeyboardAdapter,
+        message_cache: Optional[MessageCache] = None,
     ):
         """Initialize callback handlers.
 
@@ -34,15 +39,16 @@ class CallbackHandlers:
             user_service: User application service
             message_adapter: Message formatting adapter
             keyboard_adapter: Keyboard creation adapter
+            message_cache: Optional message cache for performance
         """
         self.vehicle_service = vehicle_service
         self.user_service = user_service
         self.message_adapter = message_adapter
         self.keyboard_adapter = keyboard_adapter
+        self.message_cache = message_cache
+        self.cached_formatter = CachedVehicleFormatter(message_cache) if message_cache else None
 
-    async def handle_callback(
-        self, update: Update, context: ContextTypes.DEFAULT_TYPE
-    ) -> None:
+    async def handle_callback(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         """Handle callback queries from inline keyboards."""
         query = update.callback_query
         await query.answer()
@@ -66,171 +72,236 @@ class CallbackHandlers:
                 logger.warning(f"Unknown callback data: {data}")
         except Exception as e:
             logger.error(f"Error handling callback: {e}")
-            await query.edit_message_text(
-                "Sorry, an error occurred. Please try again later."
-            )
-    
+            await query.edit_message_text("Sorry, an error occurred. Please try again later.")
+
     async def _handle_features_navigation(
         self, update: Update, context: ContextTypes.DEFAULT_TYPE, data: str
     ) -> None:
         """Handle features navigation callbacks."""
         query = update.callback_query
-        
+
         try:
             # Parse the callback data
             parts = data.split(":")
             if len(parts) < 2:
                 logger.error(f"Invalid features callback data: {data}")
                 return
-            
+
             action = parts[1]
-            
+            page = int(parts[2]) if len(parts) > 2 else 1
+
             if action == "show_categories":
                 # Get vehicle data from context if available
                 vehicle_data = context.user_data.get("last_vehicle_data", {})
-                await self._show_feature_categories(update, context, vehicle_data)
+                await self._show_feature_categories(update, context, vehicle_data, page)
             elif action == "back_to_vehicle":
                 # Go back to vehicle summary
                 vehicle_data = context.user_data.get("last_vehicle_data", {})
                 await self._show_vehicle_summary(update, context, vehicle_data)
-                
+
         except Exception as e:
             logger.error(f"Error in features navigation: {e}")
-            await query.edit_message_text(
-                "❌ An error occurred. Please try again."
-            )
-    
+            await query.edit_message_text("❌ An error occurred. Please try again.")
+
     async def _handle_feature_category(
         self, update: Update, context: ContextTypes.DEFAULT_TYPE, data: str
     ) -> None:
         """Handle feature category selection callbacks."""
         query = update.callback_query
-        
+
         try:
             # Parse the callback data
             parts = data.split(":")
             if len(parts) < 2:
                 logger.error(f"Invalid feature category callback data: {data}")
                 return
-            
+
             category = parts[1]
-            
+            page = int(parts[2]) if len(parts) > 2 else 1
+
             # Get vehicle features from context
             vehicle_data = context.user_data.get("last_vehicle_data", {})
             features = PremiumFeaturesFormatter.extract_features(vehicle_data)
-            
+
             if not features:
-                await query.edit_message_text(
-                    "No features available for this vehicle."
-                )
+                await query.edit_message_text("No features available for this vehicle.")
                 return
-            
+
             # Get categorized features
             categorized = PremiumFeaturesFormatter.get_feature_categories(features)
-            
+
             if category not in categorized:
-                await query.edit_message_text(
-                    f"No features found in the {category} category."
-                )
+                await query.edit_message_text(f"No features found in the {category} category.")
                 return
-            
-            # Format the features for this category
+
+            # Paginate features within category
             category_features = categorized[category]
-            message_text = PremiumFeaturesFormatter.format_category_features(
-                category, category_features
+            features_per_page = 10
+            total_pages = (len(category_features) + features_per_page - 1) // features_per_page
+            page = max(1, min(page, total_pages))
+
+            start_idx = (page - 1) * features_per_page
+            end_idx = min(start_idx + features_per_page, len(category_features))
+            page_features = category_features[start_idx:end_idx]
+
+            # Format the features for this category page
+            message_text = PremiumFeaturesFormatter.format_category_features_paginated(
+                category, page_features, page, total_pages, len(category_features)
             )
-            
+
             # Add navigation buttons
-            keyboard = [
-                [InlineKeyboardButton("↩️ Back to Categories", callback_data="features:show_categories")],
-                [InlineKeyboardButton("🚗 Back to Vehicle", callback_data="features:back_to_vehicle")]
-            ]
-            
-            reply_markup = InlineKeyboardMarkup(keyboard)
-            
-            await query.edit_message_text(
-                message_text,
-                parse_mode=ParseMode.MARKDOWN,
-                reply_markup=reply_markup
+            keyboard = []
+
+            # Add pagination if needed
+            if total_pages > 1:
+                pagination_row = []
+                if page > 1:
+                    pagination_row.append(
+                        InlineKeyboardButton(
+                            "◀️ Previous", callback_data=f"feature_category:{category}:{page-1}"
+                        )
+                    )
+                pagination_row.append(
+                    InlineKeyboardButton(f"Page {page}/{total_pages}", callback_data="noop")
+                )
+                if page < total_pages:
+                    pagination_row.append(
+                        InlineKeyboardButton(
+                            "Next ▶️", callback_data=f"feature_category:{category}:{page+1}"
+                        )
+                    )
+                keyboard.append(pagination_row)
+
+            keyboard.extend(
+                [
+                    [
+                        InlineKeyboardButton(
+                            "↩️ Back to Categories", callback_data="features:show_categories"
+                        )
+                    ],
+                    [
+                        InlineKeyboardButton(
+                            "🚗 Back to Vehicle", callback_data="features:back_to_vehicle"
+                        )
+                    ],
+                ]
             )
-            
+
+            reply_markup = InlineKeyboardMarkup(keyboard)
+
+            await query.edit_message_text(
+                message_text, parse_mode=ParseMode.MARKDOWN, reply_markup=reply_markup
+            )
+
         except Exception as e:
             logger.error(f"Error in feature category handler: {e}")
-            await query.edit_message_text(
-                "❌ An error occurred. Please try again."
-            )
-    
+            await query.edit_message_text("❌ An error occurred. Please try again.")
+
     async def _show_feature_categories(
-        self, update: Update, context: ContextTypes.DEFAULT_TYPE, vehicle_data: dict
+        self, update: Update, context: ContextTypes.DEFAULT_TYPE, vehicle_data: dict, page: int = 1
     ) -> None:
-        """Show feature categories with buttons."""
+        """Show feature categories with buttons - paginated."""
         query = update.callback_query
-        
+
         features = PremiumFeaturesFormatter.extract_features(vehicle_data)
         if not features:
-            await query.edit_message_text(
-                "No features available for this vehicle."
-            )
+            await query.edit_message_text("No features available for this vehicle.")
             return
-        
+
         # Get categorized features
         categorized = PremiumFeaturesFormatter.get_feature_categories(features)
-        
+
         # Create summary message
         message_text = PremiumFeaturesFormatter.format_features_summary_with_buttons(features)
-        
-        # Create category buttons
+
+        # Create category buttons with pagination
         keyboard = []
-        
-        # Add category buttons in rows of 2
-        category_order = ["safety", "technology", "luxury", "performance", "comfort", 
-                         "entertainment", "convenience", "exterior", "interior", "eco"]
-        
+
+        # Add category buttons in rows of 2, paginated (4 categories per page)
+        category_order = [
+            "safety",
+            "technology",
+            "luxury",
+            "performance",
+            "comfort",
+            "entertainment",
+            "convenience",
+            "exterior",
+            "interior",
+            "eco",
+        ]
+
+        # Filter only categories that have features
+        available_categories = [cat for cat in category_order if cat in categorized]
+
+        # Pagination settings
+        categories_per_page = 4
+        total_pages = (len(available_categories) + categories_per_page - 1) // categories_per_page
+        page = max(1, min(page, total_pages))  # Ensure page is within bounds
+
+        start_idx = (page - 1) * categories_per_page
+        end_idx = min(start_idx + categories_per_page, len(available_categories))
+
+        # Add category buttons for current page
         button_row = []
-        for category in category_order:
-            if category in categorized:
-                count = len(categorized[category])
-                icon = PremiumFeaturesFormatter.CATEGORY_ICONS.get(category, "•")
-                button_text = f"{icon} {category.capitalize()} ({count})"
-                button_row.append(
-                    InlineKeyboardButton(
-                        button_text, 
-                        callback_data=f"feature_category:{category}"
-                    )
-                )
-                
-                if len(button_row) == 2:
-                    keyboard.append(button_row)
-                    button_row = []
-        
+        for i in range(start_idx, end_idx):
+            category = available_categories[i]
+            count = len(categorized[category])
+            icon = PremiumFeaturesFormatter.CATEGORY_ICONS.get(category, "•")
+            button_text = f"{icon} {category.capitalize()} ({count})"
+            button_row.append(
+                InlineKeyboardButton(button_text, callback_data=f"feature_category:{category}")
+            )
+
+            if len(button_row) == 2:
+                keyboard.append(button_row)
+                button_row = []
+
         # Add remaining button if any
         if button_row:
             keyboard.append(button_row)
-        
+
+        # Add pagination buttons if needed
+        if total_pages > 1:
+            pagination_row = []
+            if page > 1:
+                pagination_row.append(
+                    InlineKeyboardButton(
+                        "◀️ Previous", callback_data=f"features:show_categories:{page-1}"
+                    )
+                )
+            pagination_row.append(
+                InlineKeyboardButton(f"Page {page}/{total_pages}", callback_data="noop")
+            )
+            if page < total_pages:
+                pagination_row.append(
+                    InlineKeyboardButton(
+                        "Next ▶️", callback_data=f"features:show_categories:{page+1}"
+                    )
+                )
+            keyboard.append(pagination_row)
+
         # Add back button
-        keyboard.append([
-            InlineKeyboardButton("↩️ Back to Vehicle", callback_data="features:back_to_vehicle")
-        ])
-        
-        reply_markup = InlineKeyboardMarkup(keyboard)
-        
-        await query.edit_message_text(
-            message_text,
-            parse_mode=ParseMode.MARKDOWN,
-            reply_markup=reply_markup
+        keyboard.append(
+            [InlineKeyboardButton("↩️ Back to Vehicle", callback_data="features:back_to_vehicle")]
         )
-    
+
+        reply_markup = InlineKeyboardMarkup(keyboard)
+
+        await query.edit_message_text(
+            message_text, parse_mode=ParseMode.MARKDOWN, reply_markup=reply_markup
+        )
+
     async def _show_vehicle_summary(
         self, update: Update, context: ContextTypes.DEFAULT_TYPE, vehicle_data: dict
     ) -> None:
         """Show vehicle summary with updated button."""
         query = update.callback_query
-        
+
         # This would normally show the full vehicle summary
         # For now, we'll show a placeholder
         await query.edit_message_text(
-            "🚗 *Vehicle Summary*\n\nReturning to vehicle view...",
-            parse_mode=ParseMode.MARKDOWN
+            "🚗 *Vehicle Summary*\n\nReturning to vehicle view...", parse_mode=ParseMode.MARKDOWN
         )
 
     async def _handle_refresh(
@@ -253,7 +324,7 @@ class CallbackHandlers:
                 username=update.effective_user.username,
                 first_name=update.effective_user.first_name,
                 last_name=update.effective_user.last_name,
-                language_code=getattr(update.effective_user, 'language_code', 'en'),
+                language_code=getattr(update.effective_user, "language_code", "en"),
             )
 
             # Decode the VIN again (force refresh)
@@ -261,18 +332,12 @@ class CallbackHandlers:
             # result = await self.vehicle_service.decode_vin(vin, user.preferences, force_refresh=True)
 
             # For now, show a simple response
-            response_text = (
-                f"✅ *Refreshed Data*\n\nVIN: `{vin}`\n\nData has been refreshed!"
-            )
+            response_text = f"✅ *Refreshed Data*\n\nVIN: `{vin}`\n\nData has been refreshed!"
 
             # Add keyboard
             keyboard = [
                 [InlineKeyboardButton("🔄 Refresh", callback_data=f"refresh:{vin}")],
-                [
-                    InlineKeyboardButton(
-                        "📋 Decode Another", callback_data="action:decode_vin"
-                    )
-                ],
+                [InlineKeyboardButton("📋 Decode Another", callback_data="action:decode_vin")],
                 [InlineKeyboardButton("❌ Close", callback_data="close")],
             ]
 
@@ -287,9 +352,7 @@ class CallbackHandlers:
                 "❌ An error occurred while refreshing the data. Please try again."
             )
 
-    async def _handle_close(
-        self, update: Update, context: ContextTypes.DEFAULT_TYPE
-    ) -> None:
+    async def _handle_close(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         """Handle close callback."""
         query = update.callback_query
         try:
@@ -300,9 +363,7 @@ class CallbackHandlers:
             # If we can't delete, just edit to show it's closed
             await query.edit_message_text("Closed.")
 
-    async def _show_settings_menu(
-        self, update: Update, context: ContextTypes.DEFAULT_TYPE
-    ) -> None:
+    async def _show_settings_menu(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         """Show the main settings menu."""
         query = update.callback_query
 
@@ -357,9 +418,7 @@ class CallbackHandlers:
                 )
 
                 # Add back button
-                keyboard = [
-                    [InlineKeyboardButton("↩️ Back", callback_data="action:start")]
-                ]
+                keyboard = [[InlineKeyboardButton("↩️ Back", callback_data="action:start")]]
                 reply_markup = InlineKeyboardMarkup(keyboard)
 
                 await query.edit_message_text(
@@ -375,16 +434,8 @@ class CallbackHandlers:
 
                 # Create action buttons
                 keyboard = [
-                    [
-                        InlineKeyboardButton(
-                            "🔍 Decode VIN", callback_data="action:decode_vin"
-                        )
-                    ],
-                    [
-                        InlineKeyboardButton(
-                            "⚙️ Settings", callback_data="action:settings"
-                        )
-                    ],
+                    [InlineKeyboardButton("🔍 Decode VIN", callback_data="action:decode_vin")],
+                    [InlineKeyboardButton("⚙️ Settings", callback_data="action:settings")],
                     [InlineKeyboardButton("📖 Help", callback_data="action:help")],
                 ]
 
@@ -397,6 +448,4 @@ class CallbackHandlers:
                 )
         except Exception as e:
             logger.error(f"Error in action button handler: {e}")
-            await query.edit_message_text(
-                "Sorry, an error occurred. Please try again later."
-            )
+            await query.edit_message_text("Sorry, an error occurred. Please try again later.")

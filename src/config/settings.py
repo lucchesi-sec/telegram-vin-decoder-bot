@@ -17,12 +17,8 @@ class TelegramSettings(BaseSettings):
     fly_api_token: Optional[SecretStr] = Field(None, alias="FLY_API_TOKEN")
     autodev_api_key: Optional[str] = Field(None, alias="AUTODEV_API_KEY")
     upstash_redis_rest_url: Optional[str] = Field(None, alias="UPSTASH_REDIS_REST_URL")
-    upstash_redis_rest_token: Optional[SecretStr] = Field(
-        None, alias="UPSTASH_REDIS_REST_TOKEN"
-    )
-    http_timeout_seconds: Optional[int] = Field(
-        default=15, alias="HTTP_TIMEOUT_SECONDS"
-    )
+    upstash_redis_rest_token: Optional[SecretStr] = Field(None, alias="UPSTASH_REDIS_REST_TOKEN")
+    http_timeout_seconds: Optional[int] = Field(default=15, alias="HTTP_TIMEOUT_SECONDS")
     log_level: Optional[str] = Field(default="INFO", alias="LOG_LEVEL")
 
     class Config:
@@ -62,8 +58,16 @@ class DatabaseSettings(BaseSettings):
 
     database_url: Optional[str] = Field(None, alias="DATABASE_URL")
     pool_size: int = Field(default=20, alias="DB_POOL_SIZE")
-    max_overflow: int = Field(default=0, alias="DB_MAX_OVERFLOW")
-    pool_recycle: int = Field(default=3600, alias="DB_POOL_RECYCLE")
+    max_overflow: int = Field(
+        default=10, alias="DB_MAX_OVERFLOW"
+    )  # Allow overflow for burst traffic
+    pool_recycle: int = Field(
+        default=1800, alias="DB_POOL_RECYCLE"
+    )  # Recycle connections every 30 min
+    pool_pre_ping: bool = Field(
+        default=True, alias="DB_POOL_PRE_PING"
+    )  # Test connections before using
+    pool_timeout: int = Field(default=30, alias="DB_POOL_TIMEOUT")  # Timeout for getting connection
     echo_sql: bool = Field(default=False, alias="DB_ECHO_SQL")
 
     class Config:

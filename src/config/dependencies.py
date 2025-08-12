@@ -17,6 +17,7 @@ from src.infrastructure.persistence.repositories.postgresql_user_repository impo
 from src.infrastructure.persistence.repositories.postgresql_vehicle_repository import PostgreSQLVehicleRepository
 from src.infrastructure.persistence.models import DatabaseEngine
 from src.infrastructure.persistence.cache import UpstashCache, VehicleCacheRepository
+from src.infrastructure.persistence.cache.message_cache import MessageCache
 from src.application.shared.simple_command_bus import SimpleCommandBus
 from src.application.shared.simple_query_bus import SimpleQueryBus
 from src.application.shared.simple_event_bus import SimpleEventBus
@@ -71,12 +72,20 @@ class Container(containers.DeclarativeContainer):
         autodev_adapter=autodev_adapter
     )
     
-    # Database Engine (conditional)
+    # Database Engine (conditional) with optimized pooling
     database_engine = providers.Singleton(
         lambda: DatabaseEngine(
-            Container.settings().database.database_url.replace("postgresql://", "postgresql+asyncpg://", 1) 
-            if Container.settings().database.database_url.startswith("postgresql://") 
-            else Container.settings().database.database_url
+            database_url=(
+                Container.settings().database.database_url.replace("postgresql://", "postgresql+asyncpg://", 1) 
+                if Container.settings().database.database_url.startswith("postgresql://") 
+                else Container.settings().database.database_url
+            ),
+            pool_size=Container.settings().database.pool_size,
+            max_overflow=Container.settings().database.max_overflow,
+            pool_pre_ping=Container.settings().database.pool_pre_ping,
+            pool_recycle=Container.settings().database.pool_recycle,
+            pool_timeout=Container.settings().database.pool_timeout,
+            echo_sql=Container.settings().database.echo_sql
         ) if Container.settings().database.database_url else None
     )
     
@@ -90,6 +99,11 @@ class Container(containers.DeclarativeContainer):
     
     vehicle_cache_repository = providers.Singleton(
         lambda: VehicleCacheRepository(Container.upstash_cache()) if Container.upstash_cache() else None
+    )
+    
+    # Message cache for formatted data
+    message_cache = providers.Singleton(
+        lambda: MessageCache(Container.upstash_cache()) if Container.upstash_cache() else None
     )
     
     # Repositories (conditional based on database availability)
