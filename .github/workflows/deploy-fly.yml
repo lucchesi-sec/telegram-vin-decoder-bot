@@ -25,7 +25,7 @@ jobs:
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
         run: |
-          echo "Setting secrets for vinbot-decoder app..."
+          echo "Setting secrets for vinbot-decoder-v2 app..."
           
           # Check if required secrets exist
           if [ -z "${{ secrets.TELEGRAM_BOT_TOKEN }}" ]; then
@@ -65,14 +65,14 @@ jobs:
             SECRETS_TO_SET="$SECRETS_TO_SET LOG_LEVEL=\"${{ secrets.LOG_LEVEL }}\""
           fi
           
-          eval flyctl secrets set $SECRETS_TO_SET --app vinbot-decoder
+          eval flyctl secrets set $SECRETS_TO_SET --app vinbot-decoder-v2
           
           # Verify secrets were set
           echo "Verifying secrets were set..."
-          flyctl secrets list --app vinbot-decoder
+          flyctl secrets list --app vinbot-decoder-v2
 
       - name: Deploy to Fly.io
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
         run: |
-          flyctl deploy --remote-only --app vinbot-decoder --strategy rolling --wait-timeout 600
+          flyctl deploy --remote-only --app vinbot-decoder-v2 --strategy rolling --wait-timeout 600
