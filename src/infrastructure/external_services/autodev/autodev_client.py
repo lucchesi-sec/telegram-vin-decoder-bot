@@ -40,6 +40,12 @@ class AutoDevClient:
         # Auto.dev API endpoint for VIN decoding
         url = f"{self.BASE_URL}/vin/{vin.value}"
         
+        # Log API key info for debugging (first few chars only)
+        if self.api_key:
+            logger.info(f"Auto.dev API key configured: {self.api_key[:8]}... (length: {len(self.api_key)})")
+        else:
+            logger.warning("Auto.dev API key is empty or not configured")
+        
         try:
             async with httpx.AsyncClient(timeout=self.timeout) as client:
                 # Use Bearer token in header (more secure than query parameter)
@@ -50,13 +56,23 @@ class AutoDevClient:
                 
                 response = await client.get(url, headers=headers)
                 
-                # Log response status
+                # Log response status and details
                 logger.info(f"Auto.dev API response status: {response.status_code}")
+                logger.debug(f"Auto.dev API URL: {url}")
+                logger.debug(f"Auto.dev API headers: {headers.get('Accept')}")
                 
                 if response.status_code == 401:
                     raise Exception("Invalid API key or unauthorized access")
                 elif response.status_code == 404:
                     raise Exception("VIN not found or invalid")
+                elif response.status_code == 500:
+                    # Log response body for 500 errors to debug
+                    try:
+                        error_body = response.text
+                        logger.error(f"Auto.dev API 500 error response: {error_body}")
+                    except:
+                        pass
+                    raise Exception(f"Auto.dev API server error (500)")
                 elif response.status_code >= 400:
                     raise Exception(f"API error: {response.status_code}")
                 
@@ -221,6 +237,8 @@ class AutoDevClient:
             test_vin = "ZPBUA1ZL9KLA00848"
             url = f"{self.BASE_URL}/vin/{test_vin}"
             
+            logger.info(f"Testing Auto.dev API connection with URL: {url}")
+            
             async with httpx.AsyncClient(timeout=5) as client:
                 headers = {
                     "Authorization": f"Bearer {self.api_key}",
@@ -228,7 +246,10 @@ class AutoDevClient:
                 }
                 response = await client.get(url, headers=headers)
                 
+                logger.info(f"Auto.dev test connection status: {response.status_code}")
+                
                 # 200 means success, 401 means invalid key, 404 means VIN not found (but API works)
                 return response.status_code in [200, 404]
-        except:
+        except Exception as e:
+            logger.error(f"Auto.dev test connection failed: {e}")
             return False

@@ -100,12 +100,24 @@ def format_vehicle_summary(data: Dict[str, Any]) -> str:
                 has_basic_info = True
             lines.append(f"*{label}:* {value}")
     
-    # Add premium features section
-    features_section = PremiumFeaturesFormatter.format_features_section(
-        PremiumFeaturesFormatter.extract_features(data)
-    )
-    if features_section:
-        lines.append(features_section)
+    # Only show feature count summary without listing all features
+    # The full features are now accessed via buttons
+    features = PremiumFeaturesFormatter.extract_features(data)
+    if features:
+        lines.append("\n🌟 *PREMIUM FEATURES*")
+        lines.append("━" * 25)
+        
+        # Get categorized counts
+        categorized = PremiumFeaturesFormatter.get_feature_categories(features)
+        if categorized:
+            summary_parts = []
+            for category, cat_features in list(categorized.items())[:3]:
+                icon = PremiumFeaturesFormatter.CATEGORY_ICONS.get(category, "•")
+                summary_parts.append(f"{icon} {len(cat_features)} {category}")
+            
+            lines.append(" • ".join(summary_parts))
+            lines.append(f"\n✨ _Total: {len(features)} premium features_")
+            lines.append("_Use the button below to explore features by category_")
     
     return "\n".join(lines)
 

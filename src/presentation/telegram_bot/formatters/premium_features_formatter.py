@@ -197,3 +197,91 @@ class PremiumFeaturesFormatter:
             return "✨ *ENHANCED*"
         else:
             return ""
+    
+    @classmethod
+    def get_feature_categories(cls, features: List[str]) -> Dict[str, List[str]]:
+        """Get features organized by categories.
+        
+        Args:
+            features: List of feature names
+            
+        Returns:
+            Dictionary with categories as keys and feature lists as values
+        """
+        if not features:
+            return {}
+        
+        categorized: Dict[str, List[str]] = {}
+        for feature in features:
+            category = cls.categorize_feature(feature)
+            if category not in categorized:
+                categorized[category] = []
+            categorized[category].append(feature)
+        
+        return categorized
+    
+    @classmethod
+    def format_features_summary_with_buttons(cls, features: List[str]) -> str:
+        """Format a summary of features with button navigation prompt.
+        
+        Args:
+            features: List of feature names
+            
+        Returns:
+            Formatted summary text for Telegram
+        """
+        if not features:
+            return ""
+        
+        categorized = cls.get_feature_categories(features)
+        
+        lines = []
+        lines.append("\n🌟 *PREMIUM FEATURES*")
+        lines.append("━" * 25)
+        
+        # Show category counts
+        category_order = ["safety", "luxury", "technology", "performance", "comfort", 
+                         "entertainment", "convenience", "exterior", "interior", "eco"]
+        
+        feature_summary = []
+        for category in category_order:
+            if category in categorized:
+                count = len(categorized[category])
+                icon = cls.CATEGORY_ICONS.get(category, "•")
+                feature_summary.append(f"{icon} {count} {category}")
+        
+        if feature_summary:
+            lines.append("\n" + " • ".join(feature_summary[:3]))
+            if len(feature_summary) > 3:
+                lines.append(" • ".join(feature_summary[3:6]))
+        
+        lines.append(f"\n✨ _Total: {len(features)} premium features_")
+        lines.append("\n👇 *Select a category to view features:*")
+        
+        return "\n".join(lines)
+    
+    @classmethod
+    def format_category_features(cls, category: str, features: List[str]) -> str:
+        """Format features for a specific category.
+        
+        Args:
+            category: Category name
+            features: List of features in this category
+            
+        Returns:
+            Formatted text for Telegram
+        """
+        icon = cls.CATEGORY_ICONS.get(category, "•")
+        lines = []
+        lines.append(f"{icon} *{category.upper()} FEATURES*")
+        lines.append("━" * 25)
+        
+        for feature in features:
+            # Truncate long feature names
+            if len(feature) > 50:
+                feature = feature[:47] + "..."
+            lines.append(f"• {feature}")
+        
+        lines.append(f"\n_Total: {len(features)} {category} features_")
+        
+        return "\n".join(lines)

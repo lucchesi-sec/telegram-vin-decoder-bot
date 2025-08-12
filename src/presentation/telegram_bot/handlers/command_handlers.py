@@ -119,10 +119,28 @@ class CommandHandlers:
                 # Add service information
                 response_text += f"\n\n🔧 _Decoded by {result.service_used}_"
 
+                # Store vehicle data in context for feature navigation
+                context.user_data["last_vehicle_data"] = vehicle_data
+                
+                # Check if there are features to display
+                from src.presentation.telegram_bot.formatters.premium_features_formatter import PremiumFeaturesFormatter
+                features = PremiumFeaturesFormatter.extract_features(vehicle_data)
+                
                 # Add action buttons
                 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 
-                keyboard = [
+                keyboard = []
+                
+                # Add features button if features exist
+                if features:
+                    keyboard.append([
+                        InlineKeyboardButton(
+                            f"✨ View Features ({len(features)})", 
+                            callback_data="features:show_categories"
+                        )
+                    ])
+                
+                keyboard.extend([
                     [
                         InlineKeyboardButton(
                             "🔄 Refresh", callback_data=f"refresh:{result.vin}"
@@ -137,7 +155,7 @@ class CommandHandlers:
                         ),
                         InlineKeyboardButton("❌ Close", callback_data="close"),
                     ],
-                ]
+                ])
                 reply_markup = InlineKeyboardMarkup(keyboard)
 
                 # Trim message if too long for Telegram (4096 char limit)
@@ -211,8 +229,8 @@ class CommandHandlers:
         try:
             from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 
-            # Get or create user
-            user = await self.user_service.get_or_create_user(
+            # Get or create user (for future use with preferences)
+            _user = await self.user_service.get_or_create_user(
                 telegram_id=update.effective_user.id,
                 username=update.effective_user.username,
                 first_name=update.effective_user.first_name,

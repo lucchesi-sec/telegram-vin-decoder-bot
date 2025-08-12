@@ -12,6 +12,7 @@ from src.application.user.services.user_application_service import (
 )
 from src.presentation.telegram_bot.adapters.message_adapter import MessageAdapter
 from src.presentation.telegram_bot.adapters.keyboard_adapter import KeyboardAdapter
+from src.presentation.telegram_bot.formatters.premium_features_formatter import PremiumFeaturesFormatter
 
 logger = logging.getLogger(__name__)
 
@@ -57,6 +58,10 @@ class CallbackHandlers:
                 await self._handle_close(update, context)
             elif data.startswith("action:"):
                 await self._handle_action_button(update, context, data)
+            elif data.startswith("features:"):
+                await self._handle_features_navigation(update, context, data)
+            elif data.startswith("feature_category:"):
+                await self._handle_feature_category(update, context, data)
             else:
                 logger.warning(f"Unknown callback data: {data}")
         except Exception as e:
@@ -64,6 +69,169 @@ class CallbackHandlers:
             await query.edit_message_text(
                 "Sorry, an error occurred. Please try again later."
             )
+    
+    async def _handle_features_navigation(
+        self, update: Update, context: ContextTypes.DEFAULT_TYPE, data: str
+    ) -> None:
+        """Handle features navigation callbacks."""
+        query = update.callback_query
+        
+        try:
+            # Parse the callback data
+            parts = data.split(":")
+            if len(parts) < 2:
+                logger.error(f"Invalid features callback data: {data}")
+                return
+            
+            action = parts[1]
+            
+            if action == "show_categories":
+                # Get vehicle data from context if available
+                vehicle_data = context.user_data.get("last_vehicle_data", {})
+                await self._show_feature_categories(update, context, vehicle_data)
+            elif action == "back_to_vehicle":
+                # Go back to vehicle summary
+                vehicle_data = context.user_data.get("last_vehicle_data", {})
+                await self._show_vehicle_summary(update, context, vehicle_data)
+                
+        except Exception as e:
+            logger.error(f"Error in features navigation: {e}")
+            await query.edit_message_text(
+                "❌ An error occurred. Please try again."
+            )
+    
+    async def _handle_feature_category(
+        self, update: Update, context: ContextTypes.DEFAULT_TYPE, data: str
+    ) -> None:
+        """Handle feature category selection callbacks."""
+        query = update.callback_query
+        
+        try:
+            # Parse the callback data
+            parts = data.split(":")
+            if len(parts) < 2:
+                logger.error(f"Invalid feature category callback data: {data}")
+                return
+            
+            category = parts[1]
+            
+            # Get vehicle features from context
+            vehicle_data = context.user_data.get("last_vehicle_data", {})
+            features = PremiumFeaturesFormatter.extract_features(vehicle_data)
+            
+            if not features:
+                await query.edit_message_text(
+                    "No features available for this vehicle."
+                )
+                return
+            
+            # Get categorized features
+            categorized = PremiumFeaturesFormatter.get_feature_categories(features)
+            
+            if category not in categorized:
+                await query.edit_message_text(
+                    f"No features found in the {category} category."
+                )
+                return
+            
+            # Format the features for this category
+            category_features = categorized[category]
+            message_text = PremiumFeaturesFormatter.format_category_features(
+                category, category_features
+            )
+            
+            # Add navigation buttons
+            keyboard = [
+                [InlineKeyboardButton("↩️ Back to Categories", callback_data="features:show_categories")],
+                [InlineKeyboardButton("🚗 Back to Vehicle", callback_data="features:back_to_vehicle")]
+            ]
+            
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            
+            await query.edit_message_text(
+                message_text,
+                parse_mode=ParseMode.MARKDOWN,
+                reply_markup=reply_markup
+            )
+            
+        except Exception as e:
+            logger.error(f"Error in feature category handler: {e}")
+            await query.edit_message_text(
+                "❌ An error occurred. Please try again."
+            )
+    
+    async def _show_feature_categories(
+        self, update: Update, context: ContextTypes.DEFAULT_TYPE, vehicle_data: dict
+    ) -> None:
+        """Show feature categories with buttons."""
+        query = update.callback_query
+        
+        features = PremiumFeaturesFormatter.extract_features(vehicle_data)
+        if not features:
+            await query.edit_message_text(
+                "No features available for this vehicle."
+            )
+            return
+        
+        # Get categorized features
+        categorized = PremiumFeaturesFormatter.get_feature_categories(features)
+        
+        # Create summary message
+        message_text = PremiumFeaturesFormatter.format_features_summary_with_buttons(features)
+        
+        # Create category buttons
+        keyboard = []
+        
+        # Add category buttons in rows of 2
+        category_order = ["safety", "technology", "luxury", "performance", "comfort", 
+                         "entertainment", "convenience", "exterior", "interior", "eco"]
+        
+        button_row = []
+        for category in category_order:
+            if category in categorized:
+                count = len(categorized[category])
+                icon = PremiumFeaturesFormatter.CATEGORY_ICONS.get(category, "•")
+                button_text = f"{icon} {category.capitalize()} ({count})"
+                button_row.append(
+                    InlineKeyboardButton(
+                        button_text, 
+                        callback_data=f"feature_category:{category}"
+                    )
+                )
+                
+                if len(button_row) == 2:
+                    keyboard.append(button_row)
+                    button_row = []
+        
+        # Add remaining button if any
+        if button_row:
+            keyboard.append(button_row)
+        
+        # Add back button
+        keyboard.append([
+            InlineKeyboardButton("↩️ Back to Vehicle", callback_data="features:back_to_vehicle")
+        ])
+        
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        
+        await query.edit_message_text(
+            message_text,
+            parse_mode=ParseMode.MARKDOWN,
+            reply_markup=reply_markup
+        )
+    
+    async def _show_vehicle_summary(
+        self, update: Update, context: ContextTypes.DEFAULT_TYPE, vehicle_data: dict
+    ) -> None:
+        """Show vehicle summary with updated button."""
+        query = update.callback_query
+        
+        # This would normally show the full vehicle summary
+        # For now, we'll show a placeholder
+        await query.edit_message_text(
+            "🚗 *Vehicle Summary*\n\nReturning to vehicle view...",
+            parse_mode=ParseMode.MARKDOWN
+        )
 
     async def _handle_refresh(
         self, update: Update, context: ContextTypes.DEFAULT_TYPE, data: str
@@ -80,7 +248,7 @@ class CallbackHandlers:
             )
 
             # Get user and decode again
-            user = await self.user_service.get_or_create_user(
+            _user = await self.user_service.get_or_create_user(
                 telegram_id=update.effective_user.id,
                 username=update.effective_user.username,
                 first_name=update.effective_user.first_name,
