@@ -10,7 +10,7 @@ echo "Waiting for API server to start..."
 sleep 5
 
 echo "Starting web dashboard..."
-cd /app/web-dashboard-next
+cd /app/src/presentation/web-dashboard-next
 export PORT=8000
 export HOSTNAME=0.0.0.0
 export BACKEND_URL=http://localhost:5000
