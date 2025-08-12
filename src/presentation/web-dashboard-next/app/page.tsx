@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -34,7 +34,7 @@ interface Vehicle {
   fuel_type: string
   decoded_at: string
   user_id: number
-  raw_data: any
+  raw_data: Record<string, unknown>
 }
 
 interface Stats {
@@ -58,33 +58,31 @@ export default function Dashboard() {
   const [page, setPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
 
-  const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"
-
-  useEffect(() => {
-    fetchVehicles()
-    fetchStats()
-  }, [page])
-
-  const fetchVehicles = async () => {
+  const fetchVehicles = useCallback(async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/vehicles?page=${page}&limit=10`)
+      const response = await fetch(`/api/vehicles?page=${page}&limit=10`)
       const data = await response.json()
       setVehicles(data.vehicles || [])
       setTotalPages(data.total_pages || 1)
     } catch (error) {
       console.error("Error fetching vehicles:", error)
     }
-  }
+  }, [page])
 
-  const fetchStats = async () => {
+  const fetchStats = useCallback(async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/stats`)
+      const response = await fetch(`/api/stats`)
       const data = await response.json()
       setStats(data)
     } catch (error) {
       console.error("Error fetching stats:", error)
     }
-  }
+  }, [])
+
+  useEffect(() => {
+    fetchVehicles()
+    fetchStats()
+  }, [fetchVehicles, fetchStats])
 
   const handleDecode = async () => {
     if (vinInput.length !== 17) {
@@ -96,7 +94,7 @@ export default function Dashboard() {
     setDecodeError("")
 
     try {
-      const response = await fetch(`${API_BASE_URL}/api/decode`, {
+      const response = await fetch(`/api/decode`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -112,7 +110,7 @@ export default function Dashboard() {
         const error = await response.json()
         setDecodeError(error.message || "Failed to decode VIN")
       }
-    } catch (error) {
+    } catch {
       setDecodeError("Network error. Please try again.")
     } finally {
       setIsDecoding(false)
@@ -123,7 +121,7 @@ export default function Dashboard() {
     if (!confirm("Are you sure you want to delete this vehicle?")) return
 
     try {
-      const response = await fetch(`${API_BASE_URL}/api/vehicles/${id}`, {
+      const response = await fetch(`/api/vehicles/${id}`, {
         method: "DELETE",
       })
 
