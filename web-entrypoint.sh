@@ -3,8 +3,11 @@ set -e
 
 echo "Starting FastAPI server..."
 cd /app
-python -m uvicorn src.presentation.api.api_server:app --host 0.0.0.0 --port 5000 &
+python -m uvicorn src.presentation.api.simple_api_server:app --host 0.0.0.0 --port 5000 &
 API_PID=$!
+
+echo "Waiting for API server to start..."
+sleep 5
 
 echo "Starting web dashboard..."
 cd /app/web-dashboard-next
