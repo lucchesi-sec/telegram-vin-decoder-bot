@@ -66,6 +66,13 @@ class Vehicle(AggregateRoot):
     model_year: ModelYear = None
     attributes: Dict[str, Any] = field(default_factory=dict)
     decode_history: List[DecodeAttempt] = field(default_factory=list)
+    basic_info: Optional[BasicInfo] = None
+    specifications: Optional[Specifications] = None
+    safety_ratings: Optional[Dict[str, Any]] = None
+    raw_data: Optional[Dict[str, Any]] = None
+    service_used: Optional[str] = None
+    decoded_at: datetime = field(default_factory=datetime.utcnow)
+    error_message: Optional[str] = None
     
     def __post_init__(self):
         """Initialize the vehicle and emit decoded event if newly created."""
@@ -97,12 +104,23 @@ class Vehicle(AggregateRoot):
         service_used: str
     ) -> 'Vehicle':
         """Factory method for creating a Vehicle from decode result."""
+        # Create basic info object
+        basic_info = BasicInfo(
+            vin=vin.value,
+            manufacturer=manufacturer,
+            model=model,
+            model_year=model_year.value if model_year else 0,
+        )
+        
         vehicle = cls(
             vin=vin,
             manufacturer=manufacturer,
             model=model,
             model_year=model_year,
-            attributes=attributes
+            attributes=attributes,
+            basic_info=basic_info,
+            service_used=service_used,
+            decoded_at=datetime.utcnow()
         )
         
         # Add successful decode attempt

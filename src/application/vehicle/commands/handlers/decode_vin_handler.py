@@ -90,6 +90,7 @@ class DecodeVINHandler(CommandHandler[DecodeVINCommand, DecodeResult]):
     def _create_vehicle_from_result(self, vin: VINNumber, raw_result: dict) -> Vehicle:
         """Create a vehicle entity from raw decode result."""
         from src.domain.vehicle.value_objects import ModelYear
+        from src.domain.vehicle.entities.vehicle import BasicInfo, Specifications
         
         # Handle different response formats from various services
         attributes = raw_result.get("attributes", {})
@@ -121,15 +122,64 @@ class DecodeVINHandler(CommandHandler[DecodeVINCommand, DecodeResult]):
             year = int(str(year_value))
         except (ValueError, TypeError):
             year = 2020
+            
+        # Create BasicInfo object
+        basic_info = BasicInfo(
+            vin=vin.value,
+            manufacturer=manufacturer,
+            model=model,
+            model_year=year,
+            body_class=attributes.get("body_class", ""),
+            vehicle_type=attributes.get("vehicle_type", ""),
+            gross_vehicle_weight_rating=attributes.get("gross_vehicle_weight_rating", ""),
+            manufacturer_address=attributes.get("manufacturer_address", ""),
+            plant_city=attributes.get("plant_city", ""),
+            plant_country=attributes.get("plant_country", ""),
+            plant_state=attributes.get("plant_state", "")
+        )
         
-        return Vehicle.create_from_decode_result(
+        # Create Specifications object
+        specifications = Specifications(
+            displacement_cc=attributes.get("displacement_cc"),
+            displacement_ci=attributes.get("displacement_ci"),
+            displacement_l=attributes.get("displacement_l"),
+            engine_cylinders=attributes.get("engine_cylinders"),
+            engine_model=attributes.get("engine_model", ""),
+            fuel_type_primary=attributes.get("fuel_type_primary", ""),
+            electrification_level=attributes.get("electrification_level", ""),
+            other_engine_info=attributes.get("other_engine_info", ""),
+            turbo=attributes.get("turbo"),
+            drive_type=attributes.get("drive_type", ""),
+            transmission_style=attributes.get("transmission_style", ""),
+            transmission_speeds=attributes.get("transmission_speeds", ""),
+            doors=attributes.get("doors"),
+            seats=attributes.get("seats"),
+            wheel_base_type=attributes.get("wheel_base_type", ""),
+            bed_type=attributes.get("bed_type", ""),
+            cab_type=attributes.get("cab_type", "")
+        )
+        
+        vehicle = Vehicle(
             vin=vin,
             manufacturer=manufacturer,
             model=model,
             model_year=ModelYear(year),
             attributes=attributes if attributes else raw_result,
-            service_used=raw_result.get("service", "Unknown")
+            basic_info=basic_info,
+            specifications=specifications,
+            service_used=raw_result.get("service", "Unknown"),
+            raw_data=raw_result
         )
+        
+        # Add successful decode attempt
+        attempt = DecodeAttempt(
+            timestamp=datetime.utcnow(),
+            service_used=raw_result.get("service", "Unknown"),
+            success=True
+        )
+        vehicle.add_decode_attempt(attempt)
+        
+        return vehicle
     
     def _vehicle_to_decode_result(self, vehicle: Vehicle) -> DecodeResult:
         """Convert a vehicle entity to a decode result."""
