@@ -10,6 +10,8 @@ export async function GET(
   const path = resolvedParams.path.join('/')
   const url = `${BACKEND_URL}/api/${path}${request.nextUrl.search}`
   
+  console.log(`Proxying GET request to: ${url}`)
+  
   try {
     const response = await fetch(url, {
       headers: {
@@ -17,13 +19,22 @@ export async function GET(
       },
     })
     
+    if (!response.ok) {
+      console.error(`Backend returned ${response.status}: ${response.statusText}`)
+      return NextResponse.json(
+        { error: `Backend error: ${response.statusText}` },
+        { status: response.status }
+      )
+    }
+    
     const data = await response.json()
     return NextResponse.json(data, { status: response.status })
   } catch (error) {
     console.error('API proxy error:', error)
+    console.error(`Failed to connect to backend at ${url}`)
     return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
+      { error: 'Unable to connect to backend service' },
+      { status: 503 }
     )
   }
 }
