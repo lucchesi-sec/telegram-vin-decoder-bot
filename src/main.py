@@ -46,6 +46,7 @@ async def main():
         # Start health check server for Fly.io smoke tests (in daemon thread)
         health_server = HealthCheckServer(port=8080)
         health_server.start()
+        logger.info("Health check server started - listening on port 8080")
         
         # Print environment info for debugging
         print_environment_info()
@@ -141,6 +142,7 @@ def run_sync():
         # Start health check server for Fly.io smoke tests (in daemon thread)
         health_server = HealthCheckServer(port=8080)
         health_server.start()
+        logger.info("Health check server started - listening on port 8080")
         
         # Print environment info for debugging
         print_environment_info()
