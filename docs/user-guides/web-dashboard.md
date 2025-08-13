@@ -29,9 +29,9 @@
 - **API Format**: RESTful JSON
 
 ### External Dependencies
-- **CarsXE API**: Primary data source for vehicle specifications and intelligence
-- **International VIN Decoder**: Fallback service for global VIN coverage
-- **Market Data Services**: Pricing and valuation information when available
+- **Auto.dev API**: Primary data source for vehicle specifications and intelligence
+- **NHTSA API**: Government vehicle safety database for basic specifications
+- **Market Data Services**: Future pricing and valuation information integrations
 
 ## Core Features
 
@@ -39,7 +39,7 @@
 - **Comprehensive Vehicle Breakdown**: Detailed package information with specifications, equipment lists, and feature sets
 - **Equipment Analysis**: Complete standard and optional equipment categorization with availability indicators (Std./Opt./N/A)
 - **Confidence Scoring**: Data reliability indicators showing source confidence levels and data completeness
-- **Multi-Source Integration**: Combines CarsXE API data with international VIN decoding for maximum coverage
+- **Multi-Source Integration**: Combines NHTSA and Auto.dev data sources for comprehensive vehicle coverage
 - **Package Comparison**: Side-by-side vehicle package analysis and feature comparisons
 - **Export Capabilities**: Download vehicle intelligence reports in multiple formats (PDF, CSV, JSON)
 
@@ -127,64 +127,65 @@ API will be available at http://localhost:5000
 
 ## API Dependencies & Configuration
 
-### CarsXE API Integration
-The Vehicle Intelligence Dashboard requires a **CarsXE API key** for full functionality:
+### Data Source Integration
+The Vehicle Intelligence Dashboard integrates with multiple data sources:
 
-1. **Get your API key**: Register at [CarsXE Dashboard](https://api.carsxe.com/dashboard) and obtain your API key from the Profile section.
+1. **Auto.dev API** (Primary): Enhanced vehicle specifications and premium data
+2. **NHTSA API** (Fallback): Government vehicle database for basic specifications
 
-2. **Configure environment variables**:
+**Configure environment variables**:
 ```bash
 # Backend configuration (.env file)
-CARSXE_API_KEY=your_carsxe_api_key_here
-CARSXE_BASE_URL=https://api.carsxe.com
+AUTODEV_API_KEY=your_autodev_api_key_here
 
-# Optional: Enable deep data requests (slower but more comprehensive)
-CARSXE_ENABLE_DEEPDATA=true
+# NHTSA API (free, no key required)
+DEFAULT_DECODER_SERVICE=autodev  # or 'nhtsa'
 
-# Optional: Enable international VIN decoding fallback
-CARSXE_ENABLE_INTERNATIONAL_FALLBACK=true
+# Database
+DATABASE_URL=postgresql://postgres:secret@localhost:5432/vinbot
+
+# Cache (recommended)
+UPSTASH_REDIS_REST_URL=https://your-upstash-url.upstash.io
+UPSTASH_REDIS_REST_TOKEN=your_upstash_token_here
 ```
-
-3. **API Endpoints Used**:
-   - `/specs` - Primary vehicle specifications endpoint
-   - `/v1/international-vin-decoder` - Fallback for international VINs
 
 ### Environment Configuration Requirements
 
 #### Required Variables
 | Variable | Description | Required |
 |----------|-------------|----------|
-| `CARSXE_API_KEY` | Your CarsXE API key from dashboard | ✅ Yes |
 | `DATABASE_URL` | PostgreSQL connection string | ✅ Yes |
 | `NEXT_PUBLIC_API_URL` | Frontend API endpoint URL | ✅ Yes |
 
-#### Optional Variables
+#### Recommended Variables
 | Variable | Description | Default |
 |----------|-------------|--------|
-| `CARSXE_ENABLE_DEEPDATA` | Enable detailed equipment data | `false` |
-| `CARSXE_ENABLE_INTERNATIONAL_FALLBACK` | Enable international VIN decoder | `true` |
-| `CARSXE_TIMEOUT` | API request timeout (seconds) | `30` |
+| `AUTODEV_API_KEY` | Auto.dev API key for enhanced data | *(none)* |
+| `UPSTASH_REDIS_REST_URL` | Redis cache URL | *(none)* |
+| `UPSTASH_REDIS_REST_TOKEN` | Redis cache token | *(none)* |
+| `DEFAULT_DECODER_SERVICE` | Primary service selection | `autodev` |
 | `LOG_LEVEL` | Application logging level | `INFO` |
 
 ### API Rate Limits & Best Practices
-- **CarsXE API**: Check your plan limits at [CarsXE Dashboard](https://api.carsxe.com/dashboard)
+- **Auto.dev API**: Premium service with usage-based pricing
+- **NHTSA API**: Free government service with reasonable limits
 - **Caching**: Dashboard implements intelligent caching to minimize API calls
-- **Fallback Strategy**: International VIN decoder provides coverage when primary API fails
+- **Fallback Strategy**: NHTSA used when Auto.dev is unavailable or not configured
 - **Error Handling**: Comprehensive error handling with user-friendly messages
 
 ## Navigation & Documentation
 
 ### 📚 API Documentation
-- **CarsXE API Docs**: [https://api.carsxe.com/docs](https://api.carsxe.com/docs)
-- **Quickstart Guide**: [https://api.carsxe.com/docs/quickstart](https://api.carsxe.com/docs/quickstart)
-- **Specifications Endpoint**: [https://api.carsxe.com/docs/v1/specifications](https://api.carsxe.com/docs/v1/specifications)
-- **International VIN Decoder**: [https://api.carsxe.com/docs/v1/international-vin-decoder](https://api.carsxe.com/docs/v1/international-vin-decoder)
+- **IntelAuto API Docs**: [http://localhost:5000/docs](http://localhost:5000/docs) - FastAPI Swagger UI
+- **Auto.dev API Docs**: [https://auto.dev/docs](https://auto.dev/docs) - Premium automotive data
+- **NHTSA API Docs**: [https://vpic.nhtsa.dot.gov/api/](https://vpic.nhtsa.dot.gov/api/) - Government vehicle data
+- **ReDoc Interface**: [http://localhost:5000/redoc](http://localhost:5000/redoc) - Alternative API docs
 
 ### 🔗 Integration Resources
-- **Dashboard Profile**: [https://api.carsxe.com/dashboard](https://api.carsxe.com/dashboard) - Manage API keys and usage
-- **Authentication Guide**: [https://api.carsxe.com/docs/authentication](https://api.carsxe.com/docs/authentication)
-- **Error Codes Reference**: [https://api.carsxe.com/docs/errors](https://api.carsxe.com/docs/errors)
-- **Testing VINs**: Use `WBAFR7C57CC811956` (BMW) or `WF0MXXGBWM8R43240` (Ford) for testing
+- **IntelAuto Dashboard**: [https://dashboard.intellauto.com](https://dashboard.intellauto.com) *(coming soon)*
+- **Auto.dev Portal**: [https://auto.dev](https://auto.dev) - Get API keys for premium data
+- **GitHub Repository**: [https://github.com/lucchesi-sec/telegram-vin-decoder-bot](https://github.com/lucchesi-sec/telegram-vin-decoder-bot)
+- **Testing VINs**: Use `1HGBH41JXMN109186` (Honda) or `WBAFR7C57CC811956` (BMW) for testing
 
 ### 🎯 Quick Links
 - **Main Dashboard**: `http://localhost:3000` (when running locally)
