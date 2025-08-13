@@ -1,11 +1,15 @@
 # Infrastructure Deployment Guide
 
-## Current Architecture
-- **Telegram Bot**: Python application running on Fly.io
-- **Database**: PostgreSQL (likely Supabase or Fly Postgres)
-- **Cache**: Upstash Redis
-- **Monitoring**: Sentry
-- **NEW**: Web Dashboard (FastAPI + Static Frontend)
+## IntelAuto Platform Architecture
+
+### Multi-Service Platform Overview
+IntelAuto is a comprehensive vehicle intelligence platform consisting of two independent but integrated services:
+
+- **Web Platform Service**: FastAPI backend + Next.js frontend for professional vehicle analytics
+- **Telegram Bot Service**: Conversational AI service for instant vehicle intelligence
+- **Shared Infrastructure**: PostgreSQL database, Upstash Redis cache, Sentry monitoring
+
+Both services operate independently with separate scaling, health checks, and deployment processes while sharing core business logic and data.
 
 ## Recommended Infrastructure Stack
 
@@ -248,6 +252,215 @@ www -> vinbot-decoder-v2.fly.dev
 ### SSL Certificate
 ```bash
 fly certs add yourdomain.com
+```
+
+---
+
+## Deployment Configurations
+
+### Multi-Process Deployment (Recommended)
+
+**Use Case**: Production environments requiring both web platform and Telegram bot services
+
+**Configuration**: Current `fly.toml` setup with separate VMs for each process
+
+```bash
+# Deploy both services with independent scaling
+fly deploy
+
+# Scale web service for higher traffic
+fly scale count web=2
+
+# Scale bot service for webhook processing
+fly scale count bot=1
+
+# Monitor both services
+fly status
+fly logs --app vinbot-decoder-v2
+```
+
+**Benefits**:
+- Independent scaling per service
+- Isolated resource allocation
+- Service-specific health monitoring
+- Better fault tolerance
+
+**Monitoring**:
+- Web service health: `https://your-app.fly.dev/health`
+- Bot service health: Internal TCP health checks on port 8080
+- FastAPI backend: Internal health checks at `/health` endpoint
+
+### Single-Process Deployment
+
+**Use Case**: Development, testing, or cost-optimized deployments
+
+**Setup**: Modify `fly.toml` to run both services on one machine
+
+```toml
+# Single-process configuration (development only)
+[processes]
+  app = './combined-entrypoint.sh'  # Custom script running both services
+
+# Single VM configuration
+[[vm]]
+  memory = '1gb'  # Increased memory for both services
+  cpu_kind = 'shared'
+  cpus = 1
+  processes = ['app']
+
+[http_service]
+  internal_port = 8000
+  processes = ['app']  # Same process handles web traffic
+```
+
+**Create combined entrypoint**:
+```bash
+# Create combined-entrypoint.sh
+#!/bin/sh
+set -e
+
+echo "Running database migrations..."
+alembic upgrade head
+
+echo "Starting FastAPI server..."
+python -m uvicorn src.presentation.api.domain_api_server:app --host 0.0.0.0 --port 5000 &
+API_PID=$!
+
+echo "Starting Telegram bot..."
+python -m src.main &
+BOT_PID=$!
+
+echo "Starting web dashboard..."
+cd src/presentation/web-dashboard-next
+export PORT=8000
+export HOSTNAME=0.0.0.0
+export BACKEND_URL=http://localhost:5000
+npm run start &
+WEB_PID=$!
+
+wait $API_PID $BOT_PID $WEB_PID
+```
+
+**Deployment**:
+```bash
+# Make script executable
+chmod +x combined-entrypoint.sh
+
+# Deploy single-process version
+fly deploy
+
+# Monitor all services in one machine
+fly logs
+```
+
+**Trade-offs**:
+- ✅ Lower cost (single VM)
+- ✅ Simpler deployment
+- ❌ No independent scaling
+- ❌ Single point of failure
+- ❌ Resource contention between services
+
+### Development vs Production
+
+| Aspect | Development | Production |
+|--------|-------------|------------|
+| **Process Model** | Single-process | Multi-process |
+| **VM Configuration** | 1 VM, 1GB RAM | 2 VMs, 512MB each |
+| **Health Checks** | Combined | Service-specific |
+| **Scaling** | Manual restart | Independent scaling |
+| **Cost** | ~$5/month | ~$10/month |
+| **Monitoring** | Basic logs | Service-specific metrics |
+
+### Health Check Strategy
+
+#### Multi-Process Health Checks
+- **Web Service**: Next.js `/health` endpoint (port 8000)
+- **Bot Service**: Internal TCP health on port 8080
+- **FastAPI Backend**: Internal `/health` endpoint (port 5000)
+
+#### Single-Process Health Checks
+- **Combined Service**: Single HTTP health check covers all components
+- **Fallback**: If Next.js fails, FastAPI health endpoint still available
+
+```bash
+# Check health in multi-process deployment
+curl https://your-app.fly.dev/health  # Next.js frontend
+curl http://localhost:5000/health     # FastAPI backend (internal)
+
+# Check health in single-process deployment
+curl https://your-app.fly.dev/health  # Combined health status
+```
+
+### Switching Between Deployments
+
+#### From Single to Multi-Process
+```bash
+# 1. Backup current configuration
+cp fly.toml fly.toml.single
+
+# 2. Restore multi-process configuration
+git checkout main -- fly.toml
+
+# 3. Deploy with multi-process setup
+fly deploy
+
+# 4. Verify both services are running
+fly status
+```
+
+#### From Multi to Single-Process
+```bash
+# 1. Create single-process fly.toml
+# (see configuration above)
+
+# 2. Create combined entrypoint script
+# (see script above)
+
+# 3. Deploy single-process version
+fly deploy
+
+# 4. Verify combined service is running
+fly status
+```
+
+---
+
+## Health Check Endpoint Documentation
+
+### Web Platform Health Checks
+
+**Next.js Frontend Health** (`/health`):
+```bash
+curl https://your-app.fly.dev/health
+# Response: 200 OK "ok"
+```
+
+**FastAPI Backend Health** (`/health`):
+```bash
+curl http://localhost:5000/health
+# Response: {
+#   "status": "healthy",
+#   "timestamp": "2025-01-12T15:30:00Z",
+#   "database": "healthy",
+#   "cache": "healthy"
+# }
+```
+
+### Telegram Bot Health Checks
+
+**Internal TCP Health** (Port 8080):
+- Monitored by Fly.io TCP health checks
+- Custom HTTP health server in `src/infrastructure/monitoring/http_health.py`
+- Endpoints: `/health` (basic), `/ready` (dependencies)
+
+```bash
+# Internal health check (from within the bot process)
+curl http://localhost:8080/health
+# Response: {
+#   "status": "healthy",
+#   "timestamp": 1642000000,
+#   "service": "vinbot-decoder"
+# }
 ```
 
 ---

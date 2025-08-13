@@ -1,7 +1,16 @@
-# VIN Decoder Web Dashboard (Next.js + shadcn/ui)
+# Vehicle Intelligence Dashboard
+
+## 📚 Related Documentation
+- **[📖 Main README](README.md)** - Platform overview and complete setup guide
+- **[🏗️ Architecture Guide](ARCHITECTURE.md)** - Complete system architecture and design patterns
+- **[📋 Documentation Hub](docs/README.md)** - Complete documentation index
+- **[🔗 API Documentation](docs/api/README.md)** - REST API reference and integration guides
+- **[🔌 Integrations Guide](docs/integrations/README.md)** - Data sources and third-party integrations
+- **[🚀 Development Roadmap](FUTURE_PLANS.md)** - Strategic technology roadmap
+- **[🧪 Testing Guide](README_TESTING.md)** - Quality assurance and testing strategies
 
 ## Overview
-A modern, responsive web dashboard built with Next.js 15, React 19, and shadcn/ui components. The dashboard provides a beautiful, user-friendly interface to visualize and manage VIN data with real-time updates and a sleek design.
+A comprehensive vehicle intelligence platform built with Next.js 15, React 19, and shadcn/ui components. The dashboard serves as the primary interface for vehicle package intelligence, providing detailed vehicle specifications, equipment breakdowns, market valuations, and confidence-scored data sourced from CarsXE API. Features a modern, responsive design with real-time updates and advanced analytics capabilities.
 
 ## Technology Stack
 
@@ -19,31 +28,55 @@ A modern, responsive web dashboard built with Next.js 15, React 19, and shadcn/u
 - **Database**: PostgreSQL with SQLAlchemy
 - **API Format**: RESTful JSON
 
-## Features
+### External Dependencies
+- **CarsXE API**: Primary data source for vehicle specifications and intelligence
+- **International VIN Decoder**: Fallback service for global VIN coverage
+- **Market Data Services**: Pricing and valuation information when available
 
-### 📊 Dashboard Statistics
+## Core Features
+
+### 🚗 Package Intelligence Dashboard (Primary Interface)
+- **Comprehensive Vehicle Breakdown**: Detailed package information with specifications, equipment lists, and feature sets
+- **Equipment Analysis**: Complete standard and optional equipment categorization with availability indicators (Std./Opt./N/A)
+- **Confidence Scoring**: Data reliability indicators showing source confidence levels and data completeness
+- **Multi-Source Integration**: Combines CarsXE API data with international VIN decoding for maximum coverage
+- **Package Comparison**: Side-by-side vehicle package analysis and feature comparisons
+- **Export Capabilities**: Download vehicle intelligence reports in multiple formats (PDF, CSV, JSON)
+
+### 💰 Market Intelligence Panels
+- **Market Valuation**: MSRP, invoice pricing, and delivery charges when available
+- **Historical Pricing**: Price trends and market value analysis over time
+- **Regional Variations**: Market-specific pricing and availability data
+- **Warranty Information**: Complete warranty coverage details by type, miles, and duration
+
+### 📊 Dashboard Analytics
 - **Real-time Metrics**: Live vehicle count, manufacturer diversity, and recent activity
-- **Visual Cards**: Beautiful gradient-styled statistics cards
-- **Auto-refresh**: Dynamic data updates
+- **Intelligence Insights**: Data quality scores, source coverage, and confidence analytics
+- **Visual Cards**: Beautiful gradient-styled statistics cards with intelligence KPIs
+- **Auto-refresh**: Dynamic data updates with source reliability tracking
 
-### 🔍 Vehicle Management
-- **Advanced Search**: Filter by VIN, manufacturer, or model
-- **Paginated Table**: Efficient data display with navigation
-- **Quick Actions**: View details or delete records inline
-- **Responsive Design**: Adapts perfectly to any screen size
+### 🔍 Advanced Vehicle Management
+- **Intelligent Search**: Filter by VIN, manufacturer, model, equipment, or technical specifications
+- **Smart Pagination**: Efficient data display with advanced filtering and sorting
+- **Quick Actions**: View detailed intelligence, compare packages, or export data inline
+- **Responsive Design**: Adapts perfectly to any screen size with mobile-optimized intelligence views
 
-### ➕ VIN Decoder
-- **Modal Interface**: Clean, distraction-free VIN input
-- **Validation**: Real-time 17-character VIN validation
-- **Error Handling**: User-friendly error messages
-- **Success Feedback**: Clear confirmation on successful decode
+### 🎯 Enhanced VIN Decoder
+- **Intelligence-First Interface**: Clean, focused VIN input with real-time package preview
+- **Multi-API Validation**: 17-character VIN validation with fallback to international decoding
+- **Smart Error Handling**: Context-aware error messages with alternative data suggestions
+- **Success Analytics**: Detailed confirmation with data confidence scores and source attribution
 
-### 📱 Vehicle Details
-- **Tabbed Interface**: Organized information display
-  - **Basic Info**: VIN, manufacturer, model, year
-  - **Technical**: Engine specs, fuel type
-  - **Raw Data**: Complete JSON response viewer
-- **Modern UI**: Clean card-based layout with shadcn/ui components
+### 📱 Comprehensive Vehicle Intelligence
+- **Multi-Tab Intelligence Display**: Organized information with enhanced data depth
+  - **Package Overview**: VIN, manufacturer, model, year, trim, and package details
+  - **Equipment Intelligence**: Complete standard/optional equipment breakdown with categories
+  - **Technical Specifications**: Engine, transmission, performance, and efficiency data
+  - **Market Data**: Pricing, warranties, and availability information
+  - **Color & Options**: Interior/exterior color options and trim selections
+  - **Source Attribution**: Data confidence indicators and source reliability metrics
+  - **Raw Intelligence**: Complete JSON response viewer with all API data
+- **Modern Intelligence UI**: Clean card-based layout with shadcn/ui components optimized for data density
 
 ## Installation & Setup
 
@@ -91,6 +124,74 @@ python src/presentation/web_dashboard/run_dashboard.py
 ```
 
 API will be available at http://localhost:5000
+
+## API Dependencies & Configuration
+
+### CarsXE API Integration
+The Vehicle Intelligence Dashboard requires a **CarsXE API key** for full functionality:
+
+1. **Get your API key**: Register at [CarsXE Dashboard](https://api.carsxe.com/dashboard) and obtain your API key from the Profile section.
+
+2. **Configure environment variables**:
+```bash
+# Backend configuration (.env file)
+CARSXE_API_KEY=your_carsxe_api_key_here
+CARSXE_BASE_URL=https://api.carsxe.com
+
+# Optional: Enable deep data requests (slower but more comprehensive)
+CARSXE_ENABLE_DEEPDATA=true
+
+# Optional: Enable international VIN decoding fallback
+CARSXE_ENABLE_INTERNATIONAL_FALLBACK=true
+```
+
+3. **API Endpoints Used**:
+   - `/specs` - Primary vehicle specifications endpoint
+   - `/v1/international-vin-decoder` - Fallback for international VINs
+
+### Environment Configuration Requirements
+
+#### Required Variables
+| Variable | Description | Required |
+|----------|-------------|----------|
+| `CARSXE_API_KEY` | Your CarsXE API key from dashboard | ✅ Yes |
+| `DATABASE_URL` | PostgreSQL connection string | ✅ Yes |
+| `NEXT_PUBLIC_API_URL` | Frontend API endpoint URL | ✅ Yes |
+
+#### Optional Variables
+| Variable | Description | Default |
+|----------|-------------|--------|
+| `CARSXE_ENABLE_DEEPDATA` | Enable detailed equipment data | `false` |
+| `CARSXE_ENABLE_INTERNATIONAL_FALLBACK` | Enable international VIN decoder | `true` |
+| `CARSXE_TIMEOUT` | API request timeout (seconds) | `30` |
+| `LOG_LEVEL` | Application logging level | `INFO` |
+
+### API Rate Limits & Best Practices
+- **CarsXE API**: Check your plan limits at [CarsXE Dashboard](https://api.carsxe.com/dashboard)
+- **Caching**: Dashboard implements intelligent caching to minimize API calls
+- **Fallback Strategy**: International VIN decoder provides coverage when primary API fails
+- **Error Handling**: Comprehensive error handling with user-friendly messages
+
+## Navigation & Documentation
+
+### 📚 API Documentation
+- **CarsXE API Docs**: [https://api.carsxe.com/docs](https://api.carsxe.com/docs)
+- **Quickstart Guide**: [https://api.carsxe.com/docs/quickstart](https://api.carsxe.com/docs/quickstart)
+- **Specifications Endpoint**: [https://api.carsxe.com/docs/v1/specifications](https://api.carsxe.com/docs/v1/specifications)
+- **International VIN Decoder**: [https://api.carsxe.com/docs/v1/international-vin-decoder](https://api.carsxe.com/docs/v1/international-vin-decoder)
+
+### 🔗 Integration Resources
+- **Dashboard Profile**: [https://api.carsxe.com/dashboard](https://api.carsxe.com/dashboard) - Manage API keys and usage
+- **Authentication Guide**: [https://api.carsxe.com/docs/authentication](https://api.carsxe.com/docs/authentication)
+- **Error Codes Reference**: [https://api.carsxe.com/docs/errors](https://api.carsxe.com/docs/errors)
+- **Testing VINs**: Use `WBAFR7C57CC811956` (BMW) or `WF0MXXGBWM8R43240` (Ford) for testing
+
+### 🎯 Quick Links
+- **Main Dashboard**: `http://localhost:3000` (when running locally)
+- **API Health Check**: `http://localhost:5000/health`
+- **API Documentation**: `http://localhost:5000/docs` (FastAPI auto-generated docs)
+- **Vehicle Intelligence**: Access comprehensive vehicle data with confidence scoring
+- **Package Comparison**: Compare multiple vehicles side-by-side with detailed breakdowns
 
 ## Project Structure
 
