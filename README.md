@@ -1,6 +1,7 @@
-# IntelAuto - Vehicle Intelligence Platform
+# IntelAuto - All-in-One Vehicle Intelligence Platform
 
-[![Platform](https://img.shields.io/badge/Platform-Multi--Interface-blue)](#platform-interfaces)
+[![Platform](https://img.shields.io/badge/Platform-All--in--One%20Vehicle%20Intelligence-blue)](#platform-interfaces)
+[![Version](https://img.shields.io/badge/Version-2.0.0-green)](#)
 [![FastAPI](https://img.shields.io/badge/API-FastAPI-009688)](https://fastapi.tiangolo.com/)
 [![Next.js](https://img.shields.io/badge/Frontend-Next.js%2015.4-black)](https://nextjs.org/)
 [![SaaS](https://img.shields.io/badge/Model-SaaS-green)](#saas-model-subscriptions-rate-limits-and-access-control)
@@ -8,7 +9,7 @@
 [![TypeScript](https://img.shields.io/badge/Frontend-TypeScript-3178c6)](https://typescriptlang.org/)
 [![DDD](https://img.shields.io/badge/Architecture-Domain--Driven%20Design-orange)](#architecture-summary)
 
-**The automotive industry's most advanced platform for vehicle intelligence, premium package identification, and data-driven insights**
+**The All-in-One Vehicle Intelligence Platform - Transforming raw VIN data into actionable automotive insights with premium package identification, comprehensive valuations, and multi-interface access for the modern automotive industry**
 
 ## Overview
 
@@ -376,11 +377,12 @@ OTEL_EXPORTER_OTLP_HEADERS=x-honeycomb-team=your-api-key
 
 ### 📖 Documentation
 - **[📋 Documentation Hub](docs/README.md)** - Complete documentation index and navigation
-- **[🏗️ Architecture Guide](ARCHITECTURE.md)** - Comprehensive technical architecture and design decisions
-- **[🚀 Development Roadmap](FUTURE_PLANS.md)** - Planned features and technology enhancements  
-- **[📦 Web Dashboard Guide](README_DASHBOARD.md)** - Complete dashboard setup and usage
-- **[🔗 API Documentation](docs/api/README.md)** - REST API reference and integration guides
-- **[🧪 Testing Guide](README_TESTING.md)** - Quality assurance and testing strategies
+- **[⚡ Quick Start Guide](docs/getting-started/quick-start.md)** - Get up and running in 5 minutes
+- **[🤖 Telegram Bot Guide](docs/user-guides/telegram-bot.md)** - Mobile VIN lookups and features
+- **[🌐 Web Dashboard Guide](docs/user-guides/web-dashboard.md)** - Business interface and analytics
+- **[🔌 REST API Guide](docs/user-guides/api-usage.md)** - Developer integration and reference
+- **[🏗️ Technical Architecture](docs/technical/architecture.md)** - System design and patterns
+- **[🚀 Business Roadmap](docs/business/roadmap.md)** - Strategic development plan
 
 ### 🔗 Platform Access
 - **[Web Dashboard](https://intelliauto.dev)** - Professional vehicle intelligence interface (coming soon)

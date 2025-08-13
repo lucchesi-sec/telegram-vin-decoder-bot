@@ -1,10 +1,18 @@
-# Configuration Guide
+# Configuration Guide - IntelAuto Vehicle Intelligence Platform
 
-This document provides comprehensive documentation for all environment variables used in the VIN Decoder Bot application.
+## 📚 Related Documentation
+- **[📖 Main README](../README.md)** - All-in-One Vehicle Intelligence Platform overview
+- **[🏗️ Architecture Guide](../ARCHITECTURE.md)** - Multi-interface modular platform architecture
+- **[📋 Documentation Hub](README.md)** - Complete documentation index
+- **[🔗 API Documentation](api/README.md)** - Enterprise-grade REST API reference
+- **[📝 Migration Guide](migration.md)** - Migration from legacy VIN decoding solutions
+- **[🚀 Development Roadmap](../FUTURE_PLANS.md)** - SaaS roadmap and strategic planning
 
 ## Overview
 
-The application uses environment variables for configuration to maintain security and enable different configurations across environments (development, staging, production). All configuration values should be set in your `.env` file or environment.
+This comprehensive configuration guide covers all aspects of setting up and configuring the IntelAuto All-in-One Vehicle Intelligence Platform across development, staging, and production environments. The platform supports multiple interfaces (Telegram Bot, Web Dashboard, REST API) with flexible deployment options and extensive customization capabilities.
+
+The application uses environment variables for configuration to maintain security and enable different configurations across environments. All configuration values should be set in your `.env` file or environment variables.
 
 ## Quick Start
 

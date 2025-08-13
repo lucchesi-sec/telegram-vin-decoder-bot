@@ -60,10 +60,19 @@ The platform serves users through three primary surfaces:
 - **Confidence Scoring**: Reliability assessment for decoded information
 
 ### Data Providers
+**Current Integrations:**
 - **NHTSA (National Highway Traffic Safety Administration)**: Free government VIN decoder
 - **Auto.dev**: Premium automotive API with comprehensive vehicle data
-- **Manheim MMR**: Market valuation and pricing data (future integration)
-- **Carfax**: Vehicle history and accident reporting (future integration)
+
+**Planned Integrations:**
+- **Manheim MMR**: Real-time wholesale vehicle valuations (Q2 2025)
+- **Carfax Vehicle History**: Comprehensive vehicle history reports (Q3 2025)
+- **KBB (Kelley Blue Book)**: Consumer and trade-in value estimates (Q4 2025)
+- **Automotive OEM APIs**: Direct manufacturer data feeds (2026)
+- **Experian AutoCheck**: Alternative vehicle history provider (2025)
+- **Black Book**: Additional valuation data source (Q4 2025)
+- **J.D. Power**: Vehicle reliability and quality ratings (2026)
+- **Edmunds**: Market insights and vehicle reviews (2026)
 
 ### Technical Stack
 
