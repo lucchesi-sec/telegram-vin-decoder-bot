@@ -22,8 +22,8 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { toast } from "react-hot-toast"
 import { TextScramble } from "@/components/ui/text-scramble"
+import { toast } from "react-hot-toast"
 
 interface Vehicle {
   id: number
@@ -117,49 +117,19 @@ export default function Dashboard() {
         fetchStats()
         // Show success message with vehicle details
         if (data.vehicle) {
-          toast.success(
-            <div>
-              <div>Successfully decoded:</div>
-              <div className="font-mono">
-                <TextScramble speed={20}>
-                  {`${data.vehicle.year.toString()} ${data.vehicle.manufacturer} ${data.vehicle.model}`}
-                </TextScramble>
-              </div>
-            </div>
-          )
+          toast.success("Successfully decoded: " + `${data.vehicle.year} ${data.vehicle.manufacturer} ${data.vehicle.model}`)
         } else {
-          toast.success(
-            <div>
-              <div>VIN decoded successfully</div>
-              <div className="font-mono">
-                <TextScramble speed={20}>{vinInput.toUpperCase()}</TextScramble>
-              </div>
-            </div>
-          )
+          toast.success("VIN decoded successfully: " + vinInput.toUpperCase())
         }
       } else {
         const errorMessage = data.vehicle ? "Failed to decode VIN" : (data as { message?: string }).message || "Failed to decode VIN"
         setDecodeError(errorMessage)
-        toast.error(
-          <div>
-            <div>Decode failed:</div>
-            <div>
-              <TextScramble speed={20}>{errorMessage}</TextScramble>
-            </div>
-          </div>
-        )
+        toast.error("Decode failed: " + errorMessage)
       }
     } catch (error: unknown) {
       const errorMessage = "Network error. Please try again."
       setDecodeError(errorMessage)
-      toast.error(
-        <div>
-          <div>Network error:</div>
-          <div>
-            <TextScramble speed={20}>{errorMessage}</TextScramble>
-          </div>
-        </div>
-      )
+      toast.error("Network error: " + errorMessage)
     } finally {
       setIsDecoding(false)
     }
@@ -195,7 +165,7 @@ export default function Dashboard() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
             <div>
-              <CardTitle className="text-3xl font-bold">🚗 VIN Decoder Dashboard</CardTitle>
+              <CardTitle className="text-3xl font-bold">🚗 <TextScramble speed={30}>VIN Decoder Dashboard</TextScramble></CardTitle>
               <CardDescription>Manage and decode vehicle identification numbers</CardDescription>
             </div>
             <div className="flex gap-2">
@@ -289,17 +259,17 @@ export default function Dashboard() {
                                 {filteredVehicles.length > 0 ? (
                   filteredVehicles.map((vehicle) => (
                     <TableRow key={vehicle.id}>
-                      <TableCell className="font-mono"><TextScramble speed={40}>{vehicle.vin}</TextScramble></TableCell>
-                      <TableCell><TextScramble speed={40}>{vehicle.manufacturer}</TextScramble></TableCell>
-                      <TableCell><TextScramble speed={40}>{vehicle.model}</TextScramble></TableCell>
-                      <TableCell><TextScramble speed={40}>{vehicle.year.toString()}</TextScramble></TableCell>
+                      <TableCell className="font-mono">{vehicle.vin}</TableCell>
+                      <TableCell>{vehicle.manufacturer}</TableCell>
+                      <TableCell>{vehicle.model}</TableCell>
+                      <TableCell>{vehicle.year}</TableCell>
                       <TableCell>
-                        <Badge variant="secondary"><TextScramble speed={40}>{vehicle.vehicle_type}</TextScramble></Badge>
+                        <Badge variant="secondary">{vehicle.vehicle_type}</Badge>
                       </TableCell>
-                      <TableCell><TextScramble speed={40}>{vehicle.engine_info || "N/A"}</TextScramble></TableCell>
-                      <TableCell><TextScramble speed={40}>{vehicle.fuel_type || "N/A"}</TextScramble></TableCell>
+                      <TableCell>{vehicle.engine_info || "N/A"}</TableCell>
+                      <TableCell>{vehicle.fuel_type || "N/A"}</TableCell>
                       <TableCell>
-                        <TextScramble speed={40}>{new Date(vehicle.decoded_at).toLocaleDateString()}</TextScramble>
+                        {new Date(vehicle.decoded_at).toLocaleDateString()}
                       </TableCell>
                       <TableCell>
                         <div className="flex gap-1">
@@ -317,7 +287,7 @@ export default function Dashboard() {
                               <DialogHeader>
                                 <DialogTitle>Vehicle Details</DialogTitle>
                                 <DialogDescription>
-                                  Complete information for VIN: <TextScramble speed={20}>{vehicle.vin}</TextScramble>
+                                  Complete information for VIN: {vehicle.vin}
                                 </DialogDescription>
                               </DialogHeader>
                               {selectedVehicle && selectedVehicle.id === vehicle.id && (
@@ -331,32 +301,32 @@ export default function Dashboard() {
                                     <div className="grid grid-cols-2 gap-4">
                                       <div>
                                         <p className="text-sm text-muted-foreground">VIN</p>
-                                        <p className="font-mono"><TextScramble speed={20}>{selectedVehicle.vin}</TextScramble></p>
+                                        <p className="font-mono">{selectedVehicle.vin}</p>
                                       </div>
                                       <div>
                                         <p className="text-sm text-muted-foreground">
                                           Manufacturer
                                         </p>
-                                        <p><TextScramble speed={20}>{selectedVehicle.manufacturer}</TextScramble></p>
+                                        <p>{selectedVehicle.manufacturer}</p>
                                       </div>
                                       <div>
                                         <p className="text-sm text-muted-foreground">Model</p>
-                                        <p><TextScramble speed={20}>{selectedVehicle.model}</TextScramble></p>
+                                        <p>{selectedVehicle.model}</p>
                                       </div>
                                       <div>
                                         <p className="text-sm text-muted-foreground">Year</p>
-                                        <p><TextScramble speed={20}>{selectedVehicle.year.toString()}</TextScramble></p>
+                                        <p>{selectedVehicle.year.toString()}</p>
                                       </div>
                                       <div>
                                         <p className="text-sm text-muted-foreground">Type</p>
-                                        <p><TextScramble speed={20}>{selectedVehicle.vehicle_type}</TextScramble></p>
+                                        <p>{selectedVehicle.vehicle_type}</p>
                                       </div>
                                       <div>
                                         <p className="text-sm text-muted-foreground">
                                           Decoded At
                                         </p>
                                         <p>
-                                          <TextScramble speed={20}>{new Date(selectedVehicle.decoded_at).toLocaleString()}</TextScramble>
+                                          {new Date(selectedVehicle.decoded_at).toLocaleString()}
                                         </p>
                                       </div>
                                     </div>
@@ -367,17 +337,17 @@ export default function Dashboard() {
                                         <p className="text-sm text-muted-foreground">
                                           Engine Info
                                         </p>
-                                        <p><TextScramble speed={20}>{selectedVehicle.engine_info || "Not available"}</TextScramble></p>
+                                        <p>{selectedVehicle.engine_info || "Not available"}</p>
                                       </div>
                                       <div>
                                         <p className="text-sm text-muted-foreground">Fuel Type</p>
-                                        <p><TextScramble speed={20}>{selectedVehicle.fuel_type || "Not available"}</TextScramble></p>
+                                        <p>{selectedVehicle.fuel_type || "Not available"}</p>
                                       </div>
                                     </div>
                                   </TabsContent>
                                   <TabsContent value="raw">
                                     <pre className="overflow-auto rounded-md bg-muted p-4 text-sm">
-                                      <TextScramble speed={10}>{JSON.stringify(selectedVehicle.raw_data, null, 2)}</TextScramble>
+                                      {JSON.stringify(selectedVehicle.raw_data, null, 2)}
                                     </pre>
                                   </TabsContent>
                                 </Tabs>
