@@ -1,11 +1,17 @@
-# fly.toml app configuration file for VIN Decoder with Dashboard
+# fly.toml app configuration file for IntelAuto Vehicle Intelligence Platform
+# Multi-process deployment: Web platform service + Telegram bot service
 
 app = 'vinbot-decoder-v2'
 primary_region = 'ewr'
 
 [build]
 
-# Web Dashboard Service (handles external HTTP traffic)
+# ============================================================================
+# WEB PLATFORM SERVICE - External HTTP traffic and web dashboard
+# ============================================================================
+# Handles: FastAPI backend (port 5000) + Next.js frontend (port 8000)
+# Users: Web dashboard users, API clients, business analytics
+# Features: Vehicle intelligence platform, analytics, bulk processing
 [http_service]
   internal_port = 8000
   force_https = true
@@ -14,32 +20,45 @@ primary_region = 'ewr'
   min_machines_running = 1
   processes = ['web']
 
+# Health check for web platform service
+# Monitors: Next.js frontend health endpoint (/health)
+# Note: FastAPI backend has separate internal health checks
 [[http_service.checks]]
   interval = "30s"
   grace_period = "30s"
   method = "GET"
-  path = "/health"
+  path = "/health"  # Next.js frontend health endpoint
   protocol = "http"
   timeout = "10s"
 
-# Internal health check service for bot
+# ============================================================================
+# TELEGRAM BOT SERVICE - Internal service for bot operations
+# ============================================================================
+# Handles: Telegram webhook processing, conversational AI, user interactions
+# Users: Telegram bot users, mobile professionals, field operations
+# Features: Real-time VIN decoding, interactive menus, voice/image processing
 [[services]]
   internal_port = 8080
   protocol = "tcp"
   processes = ["bot"]
 
+# Process definitions - Independent services with separate entrypoints
 [processes]
-  web = './web-entrypoint.sh'
-  bot = './entrypoint.sh'
+  web = './web-entrypoint.sh'  # Starts FastAPI + Next.js platform
+  bot = './entrypoint.sh'      # Starts Telegram bot with migrations
 
-# Web dashboard VM configuration
+# ============================================================================
+# VM CONFIGURATIONS - Independent scaling per service
+# ============================================================================
+
+# Web platform VM - Optimized for HTTP traffic and analytics
 [[vm]]
   memory = '512mb'
   cpu_kind = 'shared'
   cpus = 1
   processes = ['web']
 
-# Telegram bot VM configuration  
+# Telegram bot VM - Optimized for webhook processing and AI interactions
 [[vm]]
   memory = '512mb'
   cpu_kind = 'shared'

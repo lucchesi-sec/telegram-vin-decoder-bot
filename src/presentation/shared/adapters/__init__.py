@@ -1,0 +1,1 @@
+"""Shared adapters for presentation layer."""
