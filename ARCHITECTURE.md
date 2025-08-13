@@ -1,4 +1,13 @@
-# Architecture Documentation - VIN Decoder Telegram Bot
+# Platform Architecture - Multi-Interface Vehicle Intelligence Platform
+
+## 📚 Related Documentation
+- **[📖 Main README](README.md)** - Platform overview and quick start guide
+- **[🔗 API Documentation](docs/api/README.md)** - REST API reference and integration guides
+- **[🔌 Integrations Guide](docs/integrations/README.md)** - Data sources and third-party integrations
+- **[📋 Documentation Hub](docs/README.md)** - Complete documentation index
+- **[🚀 Development Roadmap](FUTURE_PLANS.md)** - Strategic technology roadmap
+- **[🏗️ Infrastructure Guide](INFRASTRUCTURE_GUIDE.md)** - Deployment and operations
+- **[🧪 Testing Guide](README_TESTING.md)** - Quality assurance and testing strategies
 
 ## Table of Contents
 1. [Executive Summary](#executive-summary)
@@ -8,36 +17,53 @@
 5. [System Context](#system-context)
 6. [Container Architecture](#container-architecture)
 7. [Component Architecture](#component-architecture)
-8. [Data Architecture](#data-architecture)
-9. [Infrastructure Architecture](#infrastructure-architecture)
-10. [Security Architecture](#security-architecture)
-11. [Architecture Decision Records](#architecture-decision-records)
-12. [Quality Attributes](#quality-attributes)
-13. [Future Roadmap](#future-roadmap)
+8. [Package Intelligence Subsystem](#package-intelligence-subsystem)
+9. [Data Architecture](#data-architecture)
+10. [Infrastructure Architecture](#infrastructure-architecture)
+11. [Security and Compliance](#security-and-compliance)
+12. [Architecture Decision Records](#architecture-decision-records)
+13. [Quality Attributes](#quality-attributes)
+14. [Future Roadmap](#future-roadmap)
 
 ## Executive Summary
 
-The VIN Decoder Telegram Bot is a modern, microservices-ready application built using Domain-Driven Design (DDD) principles and Clean Architecture patterns. It provides vehicle information decoding services through a conversational Telegram interface, integrating with multiple external VIN decoder APIs.
+The Multi-Interface Vehicle Intelligence Platform is a comprehensive, microservices-ready system built using Domain-Driven Design (DDD) principles and Clean Architecture patterns. It provides vehicle information decoding and package intelligence services through multiple interfaces: Telegram Bot, Next.js Dashboard, and FastAPI REST services, integrating with various external data providers.
 
 ### Key Architectural Highlights
-- **Domain-Driven Design**: Clear separation of business logic into bounded contexts
+- **Multi-Interface Platform**: Unified backend serving Telegram Bot, Web Dashboard, and REST API
+- **Domain-Driven Design**: Clear separation into bounded contexts (Vehicle, Package Intelligence, User, Messaging, Integrations)
 - **Clean Architecture**: Layered architecture with dependency inversion
 - **Event-Driven Communication**: Asynchronous message passing between components
 - **Dependency Injection**: IoC container for flexible component wiring
 - **Adapter Pattern**: External service integration through standardized interfaces
 - **CQRS Pattern**: Command and Query separation for scalability
+- **Package Intelligence**: Advanced vehicle option and equipment analysis
 
 ## System Overview
 
 ### Purpose
-Provide instant, accurate vehicle information through VIN decoding via a user-friendly Telegram bot interface.
+A comprehensive vehicle intelligence platform providing instant, accurate vehicle information and package intelligence through multiple user interfaces including conversational Telegram bot, web dashboard, and REST API services.
+
+### Multi-Interface Platform
+The platform serves users through three primary surfaces:
+- **Telegram Bot**: Conversational interface for instant VIN decoding and vehicle queries
+- **Next.js Dashboard**: Web-based management interface with advanced search and analytics
+- **FastAPI REST**: Programmatic access for integrations and third-party applications
 
 ### Core Capabilities
-- Real-time VIN decoding from multiple data sources
-- User preference management and history tracking
-- Rich conversational interface with inline keyboards
-- Flexible service provider selection (NHTSA, Auto.dev)
-- Comprehensive vehicle specification reporting
+- **Vehicle Intelligence**: Real-time VIN decoding from multiple data sources (NHTSA, Auto.dev)
+- **Package Intelligence**: Advanced vehicle options, equipment, and build sheet analysis
+- **Multi-Provider Integration**: Flexible service provider selection with fallback strategies
+- **User Management**: Preference management, history tracking, and personalization
+- **Rich Interfaces**: Conversational UI, web dashboard, and REST API access
+- **Data Normalization**: Unified data models across different provider formats
+- **Confidence Scoring**: Reliability assessment for decoded information
+
+### Data Providers
+- **NHTSA (National Highway Traffic Safety Administration)**: Free government VIN decoder
+- **Auto.dev**: Premium automotive API with comprehensive vehicle data
+- **Manheim MMR**: Market valuation and pricing data (future integration)
+- **Carfax**: Vehicle history and accident reporting (future integration)
 
 ### Technical Stack
 
@@ -65,10 +91,10 @@ Provide instant, accurate vehicle information through VIN decoding via a user-fr
 ## Architectural Principles
 
 ### 1. Domain-Driven Design (DDD)
-- **Bounded Contexts**: Clear domain boundaries (Vehicle, User, Messaging, Integration)
+- **Bounded Contexts**: Clear domain boundaries (Vehicle Domain, Package Intelligence, User Management, Messaging, Integrations)
 - **Ubiquitous Language**: Consistent terminology across code and documentation
 - **Domain Events**: Event-driven communication between aggregates
-- **Value Objects**: Immutable domain concepts (VIN, UserID, etc.)
+- **Value Objects**: Immutable domain concepts (VIN, UserID, PackageID, OptionCode, etc.)
 
 ### 2. Clean Architecture (Hexagonal)
 - **Dependency Inversion**: Core domain independent of external concerns
@@ -121,25 +147,50 @@ Provide instant, accurate vehicle information through VIN decoding via a user-fr
 
 ```mermaid
 graph TB
-    User[Telegram User]
-    Bot[VIN Decoder Bot System]
-    Telegram[Telegram API]
-    NHTSA[NHTSA VIN API]
-    AutoDev[Auto.dev API]
+    TelegramUser[Telegram User]
+    WebUser[Web User]
+    APIUser[API Consumer]
+    Platform[Multi-Interface Vehicle Intelligence Platform]
     
-    User -->|Sends VIN queries| Bot
-    Bot -->|Returns vehicle info| User
-    Bot -->|Bot API calls| Telegram
-    Telegram -->|Updates/Messages| Bot
-    Bot -->|VIN lookup| NHTSA
-    Bot -->|Premium VIN lookup| AutoDev
+    subgraph "External Data Providers"
+        NHTSA[NHTSA VIN API]
+        AutoDev[Auto.dev API]
+        ManheimMMR[Manheim MMR]
+        Carfax[Carfax API]
+    end
+    
+    subgraph "Communication Channels"
+        Telegram[Telegram API]
+        WebBrowser[Web Browser]
+        HTTPClient[HTTP Client]
+    end
+    
+    TelegramUser -->|VIN queries via chat| Telegram
+    WebUser -->|Dashboard access| WebBrowser
+    APIUser -->|REST API calls| HTTPClient
+    
+    Telegram -->|Bot messages| Platform
+    WebBrowser -->|HTTP requests| Platform
+    HTTPClient -->|API requests| Platform
+    
+    Platform -->|Vehicle data| NHTSA
+    Platform -->|Premium data| AutoDev
+    Platform -->|Pricing data| ManheimMMR
+    Platform -->|History data| Carfax
+    
+    Platform -->|Bot responses| Telegram
+    Platform -->|Dashboard UI| WebBrowser
+    Platform -->|JSON responses| HTTPClient
 ```
 
 ### External Systems
-1. **Telegram Platform**: Message delivery and user interaction
-2. **NHTSA API**: Free government VIN decoder service
-3. **Auto.dev API**: Premium vehicle data provider
-4. **Future**: Analytics, monitoring, payment systems
+1. **Telegram Platform**: Conversational interface for instant vehicle queries
+2. **Web Browser**: Dashboard interface for comprehensive vehicle management
+3. **HTTP Clients**: Programmatic API access for integrations
+4. **NHTSA API**: Free government VIN decoder service
+5. **Auto.dev API**: Premium automotive data provider with comprehensive specifications
+6. **Manheim MMR**: Market valuation and pricing intelligence (future)
+7. **Carfax**: Vehicle history and accident reporting (future)
 
 ## Container Architecture
 
@@ -147,23 +198,75 @@ graph TB
 
 ```mermaid
 graph TB
-    subgraph "VIN Decoder System"
-        Bot[Telegram Bot Application<br/>Python, Async]
-        DI[Dependency Injection Container<br/>dependency-injector]
-        Cache[In-Memory Cache<br/>Python Dict]
+    subgraph "Multi-Interface Vehicle Intelligence Platform"
+        subgraph "Interfaces"
+            TelegramBot[Telegram Bot<br/>Python, AsyncIO]
+            NextDashboard[Next.js Dashboard<br/>React 19, TypeScript]
+            FastAPI[FastAPI REST Service<br/>Python, FastAPI]
+        end
+        
+        subgraph "Core Services"
+            VehicleService[Vehicle Domain Service<br/>Python, DDD]
+            PackageService[Package Intelligence Service<br/>Python, ML]
+            UserService[User Service<br/>Python, Auth]
+            MessageService[Messaging Service<br/>Python, Events]
+            IntegrationService[Integrations Service<br/>Python, Adapters]
+        end
+        
+        subgraph "Data Layer"
+            PostgreSQL[PostgreSQL Database<br/>Relational Storage]
+            UpstashRedis[Upstash Redis<br/>Cache & Sessions]
+            ObjectStorage[Object Storage<br/>Optional Files]
+        end
     end
     
-    subgraph "External Services"
-        TG[Telegram API]
-        NHTSA[NHTSA API]
-        AutoDev[Auto.dev API]
+    subgraph "External Data Providers"
+        NHTSA[NHTSA VIN API<br/>Government Data]
+        AutoDev[Auto.dev API<br/>Premium Vehicle Data]
+        ManheimMMR[Manheim MMR<br/>Market Valuation]
+        Carfax[Carfax API<br/>Vehicle History]
     end
     
-    Bot --> DI
-    DI --> Cache
-    Bot -->|HTTPS| TG
-    Bot -->|HTTPS| NHTSA
-    Bot -->|HTTPS| AutoDev
+    subgraph "Communication Channels"
+        TelegramAPI[Telegram API]
+        WebBrowser[Web Browser]
+        HTTPClients[HTTP Clients]
+    end
+    
+    %% Interface connections
+    TelegramBot <-->|Webhook/Polling| TelegramAPI
+    NextDashboard <-->|HTTP/HTTPS| WebBrowser
+    FastAPI <-->|REST API| HTTPClients
+    
+    %% Service interactions
+    TelegramBot --> VehicleService
+    TelegramBot --> UserService
+    TelegramBot --> MessageService
+    
+    NextDashboard --> VehicleService
+    NextDashboard --> PackageService
+    NextDashboard --> UserService
+    
+    FastAPI --> VehicleService
+    FastAPI --> PackageService
+    FastAPI --> IntegrationService
+    
+    %% Data access
+    VehicleService --> PostgreSQL
+    PackageService --> PostgreSQL
+    UserService --> PostgreSQL
+    
+    VehicleService --> UpstashRedis
+    UserService --> UpstashRedis
+    PackageService --> UpstashRedis
+    
+    PackageService -.->|Optional| ObjectStorage
+    
+    %% External integrations
+    IntegrationService --> NHTSA
+    IntegrationService --> AutoDev
+    IntegrationService -.->|Future| ManheimMMR
+    IntegrationService -.->|Future| Carfax
 ```
 
 ### Container Descriptions
@@ -300,6 +403,281 @@ graph TB
 - **CORS Middleware**: Cross-origin resource sharing configuration
 - **Response Models**: Pydantic models for API responses
 - **Error Handlers**: Standardized error responses
+
+## Package Intelligence Subsystem
+
+The Package Intelligence subsystem represents a sophisticated bounded context within the platform, focused on understanding and analyzing vehicle options, equipment packages, and build configurations beyond basic VIN decoding.
+
+### Purpose
+Provide comprehensive vehicle package analysis, option decoding, and equipment intelligence through advanced data processing and machine learning techniques.
+
+### Domain Model Additions
+
+```mermaid
+classDiagram
+    class Package {
+        +PackageID id
+        +String name
+        +String code
+        +PackageType type
+        +Money price
+        +List~EquipmentItem~ equipment
+        +ConfidenceScore confidence
+        +validate_equipment()
+        +calculate_value()
+    }
+    
+    class EquipmentItem {
+        +EquipmentID id
+        +String name
+        +OptionCode option_code
+        +Category category
+        +Availability availability
+        +CompatibilityRules rules
+        +is_compatible_with(EquipmentItem)
+    }
+    
+    class OptionCode {
+        +String code
+        +String manufacturer_code
+        +String description
+        +OptionType type
+        +ModelYear model_year
+        +decode()
+        +normalize()
+    }
+    
+    class BuildSheet {
+        +BuildSheetID id
+        +VIN vin
+        +List~Package~ packages
+        +List~EquipmentItem~ individual_options
+        +ProductionDate production_date
+        +PlantCode plant_code
+        +ConfidenceScore overall_confidence
+        +generate_summary()
+    }
+    
+    class WindowSticker {
+        +WindowStickerID id
+        +VIN vin
+        +MSRP base_price
+        +List~PackagePricing~ package_prices
+        +Money destination_charge
+        +Money total_msrp
+        +EPA_Ratings fuel_economy
+        +parse_pricing()
+    }
+    
+    Package --> EquipmentItem
+    EquipmentItem --> OptionCode
+    BuildSheet --> Package
+    BuildSheet --> EquipmentItem
+    WindowSticker --> Package
+    Vehicle --> BuildSheet
+    Vehicle --> WindowSticker
+```
+
+### Core Capabilities
+
+#### 1. Package Recognition and Analysis
+- **Option Code Decoding**: Translate manufacturer-specific codes to human-readable descriptions
+- **Package Detection**: Identify complete option packages from individual codes
+- **Compatibility Validation**: Ensure option combinations are valid for specific model/year
+- **Pricing Intelligence**: Calculate package values and MSRP impacts
+
+#### 2. Ingestion and Normalization Flows
+
+```mermaid
+flowchart TD
+    A[Raw Vehicle Data] --> B[Data Ingestion Service]
+    B --> C[Option Code Extractor]
+    B --> D[Package Detector]
+    B --> E[Pricing Analyzer]
+    
+    C --> F[Code Normalization Engine]
+    D --> G[Package Rules Engine]
+    E --> H[Pricing Intelligence Service]
+    
+    F --> I[Equipment Database]
+    G --> I
+    H --> I
+    
+    I --> J[Confidence Scoring Engine]
+    J --> K[BuildSheet Generator]
+    K --> L[Vehicle Intelligence API]
+    
+    subgraph "Data Sources"
+        M[Window Stickers]
+        N[Build Sheets]
+        O[Option Lists]
+        P[Pricing Guides]
+    end
+    
+    M --> B
+    N --> B
+    O --> B
+    P --> B
+```
+
+##### Ingestion Process
+1. **Raw Data Collection**: Gather option codes, window stickers, and build sheets
+2. **Code Extraction**: Parse manufacturer-specific option codes and descriptions
+3. **Data Normalization**: Standardize format and terminology across manufacturers
+4. **Package Detection**: Identify logical groupings and package relationships
+5. **Validation**: Ensure data consistency and compatibility rules
+6. **Confidence Scoring**: Assess reliability of each decoded element
+
+##### Normalization Rules
+- **Manufacturer Code Mapping**: Translate brand-specific codes to universal format
+- **Description Standardization**: Consistent terminology and formatting
+- **Category Classification**: Group options by type (safety, performance, comfort, etc.)
+- **Compatibility Validation**: Ensure option combinations are production-valid
+
+### 3. Confidence Scoring and Rules Engine
+
+#### Confidence Scoring Algorithm
+```python
+class ConfidenceScoreCalculator:
+    def calculate_package_confidence(self, package: Package) -> ConfidenceScore:
+        factors = {
+            'source_reliability': self._assess_data_source(),
+            'code_match_accuracy': self._validate_option_codes(),
+            'compatibility_check': self._verify_option_compatibility(),
+            'pricing_consistency': self._validate_pricing_logic(),
+            'historical_validation': self._check_production_records()
+        }
+        return self._weighted_average(factors)
+```
+
+#### Confidence Levels
+- **High (90-100%)**: Multiple verified sources, all compatibility checks pass
+- **Medium-High (75-89%)**: Primary source verified, minor compatibility questions
+- **Medium (50-74%)**: Single source, some validation gaps
+- **Low (25-49%)**: Incomplete data, significant validation concerns
+- **Very Low (0-24%)**: Unverified or conflicting information
+
+#### Rules Engine Components
+
+##### Compatibility Rules
+```typescript
+interface CompatibilityRule {
+  id: string;
+  name: string;
+  condition: OptionCondition;
+  action: CompatibilityAction;
+  priority: number;
+}
+
+type OptionCondition = 
+  | { type: 'requires'; optionCodes: string[] }
+  | { type: 'conflicts'; optionCodes: string[] }
+  | { type: 'modelYear'; years: number[] }
+  | { type: 'trimLevel'; trims: string[] };
+```
+
+##### Business Rules
+- **Package Prerequisites**: Certain options require base packages
+- **Mutual Exclusions**: Options that cannot coexist
+- **Model Year Restrictions**: Options available only in specific years
+- **Trim Level Dependencies**: Options tied to specific trim configurations
+- **Production Plant Variations**: Regional or plant-specific option availability
+
+### Technical Implementation
+
+#### Application Services
+```python
+class PackageIntelligenceService:
+    def __init__(self,
+                 option_decoder: OptionCodeDecoder,
+                 package_detector: PackageDetector,
+                 confidence_engine: ConfidenceEngine,
+                 rules_engine: RulesEngine):
+        self._option_decoder = option_decoder
+        self._package_detector = package_detector
+        self._confidence_engine = confidence_engine
+        self._rules_engine = rules_engine
+    
+    async def analyze_vehicle_options(self, vin: VIN, raw_data: dict) -> BuildSheet:
+        # Extract and decode option codes
+        option_codes = await self._option_decoder.extract_codes(raw_data)
+        
+        # Detect package groupings
+        packages = await self._package_detector.identify_packages(option_codes)
+        
+        # Apply compatibility rules
+        validated_packages = await self._rules_engine.validate_compatibility(packages)
+        
+        # Calculate confidence scores
+        scored_packages = await self._confidence_engine.score_packages(validated_packages)
+        
+        # Generate build sheet
+        return BuildSheet(
+            vin=vin,
+            packages=scored_packages,
+            overall_confidence=self._calculate_overall_confidence(scored_packages)
+        )
+```
+
+#### Data Integration
+- **Source Adapters**: Normalize data from different providers (Auto.dev, manufacturer APIs)
+- **Caching Strategy**: Redis-based caching for frequently accessed option definitions
+- **Event Streaming**: Real-time updates when new option codes or packages are discovered
+- **Machine Learning Integration**: Continuous improvement of package detection algorithms
+
+### API Endpoints
+
+```typescript
+// Package Intelligence endpoints
+GET    /api/packages                    // List known packages
+GET    /api/packages/:id               // Get package details
+POST   /api/decode-options             // Decode option codes
+GET    /api/vehicles/:vin/build-sheet  // Get complete build sheet
+GET    /api/vehicles/:vin/packages     // Get package analysis
+POST   /api/validate-options           // Validate option compatibility
+
+// Analysis endpoints  
+POST   /api/analyze/window-sticker     // Analyze window sticker data
+POST   /api/analyze/option-codes       // Bulk option code analysis
+GET    /api/compatibility/:make/:model/:year  // Get compatibility rules
+```
+
+### Integration Points
+
+#### With Vehicle Domain
+- **VIN Association**: Link packages to specific vehicles
+- **Specification Enhancement**: Enrich basic vehicle data with detailed options
+- **Valuation Support**: Provide option values for pricing calculations
+
+#### With External Providers
+- **Auto.dev Integration**: Enhanced option data and package definitions
+- **Manufacturer APIs**: Direct access to official option codes and build sheets
+- **Aftermarket Data**: Third-party option and package information
+
+#### With User Interfaces
+- **Telegram Bot**: Conversational package explanations and summaries
+- **Web Dashboard**: Visual package breakdown and option details
+- **REST API**: Programmatic access to package intelligence data
+
+### Future Enhancements
+
+#### Phase 1: Foundation (Q1 2025)
+- [ ] Core option code decoding engine
+- [ ] Basic package detection algorithms
+- [ ] Confidence scoring framework
+- [ ] Initial compatibility rules
+
+#### Phase 2: Intelligence (Q2 2025)
+- [ ] Machine learning package detection
+- [ ] Advanced pricing intelligence
+- [ ] Window sticker parsing
+- [ ] Build sheet generation
+
+#### Phase 3: Advanced Features (Q3 2025)
+- [ ] Visual package comparison tools
+- [ ] Option recommendation engine
+- [ ] Market analysis and trends
+- [ ] Custom package builder
 
 ## Data Architecture
 
@@ -612,9 +990,11 @@ CMD ["npm", "start"]
 - **Performance**: Optimized bundle sizes and loading
 - **Maintainability**: Clear component structure
 
-## Security Architecture
+## Security and Compliance
 
-### Security Layers
+The platform implements comprehensive security measures across all interfaces and services, ensuring data protection, user privacy, and regulatory compliance.
+
+### Security Architecture
 
 ```mermaid
 graph TB
@@ -640,31 +1020,211 @@ graph TB
     Authz --> InputVal
 ```
 
-### Security Measures
+### Authentication and Authorization
 
-#### API Security
-- **Token Management**: Secure storage of API keys
-- **Rate Limiting**: Prevent API abuse
-- **Request Validation**: Input sanitization
-- **HTTPS Only**: Encrypted communication
+#### Multi-Interface Authentication
+- **Telegram Bot**: User verification via Telegram ID with session management
+- **Web Dashboard**: Session-based authentication with secure cookies
+- **REST API**: API key authentication with JWT tokens for authorized clients
 
-#### Data Protection
-- **PII Handling**: No persistent storage of personal data
-- **VIN Privacy**: Optional anonymization
-- **User Isolation**: Tenant data separation
-- **Audit Trail**: Security event logging
+#### Authorization Framework
+- **Role-Based Access Control (RBAC)**: User, Admin, API Consumer roles
+- **Resource-Level Permissions**: Fine-grained access to vehicles, packages, and analytics
+- **Multi-Tenant Isolation**: Secure data separation between users
+- **Audit Trail**: Complete access logging for compliance
 
-#### Telegram Security
-- **Bot Token**: Environment variable storage
-- **User Verification**: Telegram ID validation
-- **Command Injection**: Input sanitization
-- **Message Limits**: Prevent spam/abuse
+```python
+class AuthorizationService:
+    def authorize_vehicle_access(self, user: User, vehicle_id: VehicleID) -> bool:
+        # Ensure users can only access their own vehicles
+        return self._vehicle_repo.is_owned_by_user(vehicle_id, user.id)
+    
+    def authorize_api_access(self, api_key: APIKey, resource: Resource) -> bool:
+        # Validate API key permissions and rate limits
+        return self._api_key_service.has_permission(api_key, resource)
+```
 
-### Compliance Considerations
-- GDPR: Right to erasure, data minimization
-- CCPA: User data transparency
-- Industry: Automotive data standards
-- Platform: Telegram bot guidelines
+### Rate Limiting and Abuse Prevention
+
+#### Multi-Level Rate Limiting
+- **Global Platform Limits**: Overall system protection
+- **Per-Interface Limits**: Specific limits for Telegram, Web, API
+- **Per-User Limits**: Individual user quotas
+- **Per-API-Key Limits**: Client-specific rate limiting
+
+#### Implementation Strategy
+```typescript
+// Rate limiting configuration
+interface RateLimitConfig {
+  telegram: {
+    messagesPerMinute: 30,
+    vinDecodesPerHour: 50,
+    dailyLimit: 200
+  },
+  webDashboard: {
+    requestsPerMinute: 100,
+    vinDecodesPerHour: 100
+  },
+  restAPI: {
+    requestsPerMinute: 1000,  // Per API key
+    vinDecodesPerHour: 500,
+    monthlyQuota: 10000
+  }
+}
+```
+
+#### Abuse Detection
+- **Pattern Recognition**: Identify suspicious usage patterns
+- **IP-Based Blocking**: Temporary blocks for malicious IPs
+- **Captcha Integration**: Human verification for suspicious activities
+- **Progressive Penalties**: Escalating restrictions for repeat offenders
+
+### Data Protection and Privacy
+
+#### Privacy by Design
+- **Data Minimization**: Only collect necessary information
+- **Purpose Limitation**: Use data only for specified purposes
+- **Storage Limitation**: Automatic data retention policies
+- **Anonymization**: Optional VIN and user data anonymization
+
+#### PII Handling
+```python
+class PrivacyService:
+    def anonymize_vin(self, vin: VIN) -> AnonymizedVIN:
+        # Replace specific digits with generic markers
+        return AnonymizedVIN(self._hash_last_6_digits(vin.value))
+    
+    def handle_deletion_request(self, user_id: UserID) -> None:
+        # GDPR Article 17 - Right to Erasure
+        self._user_service.delete_user_data(user_id)
+        self._vehicle_service.anonymize_user_vehicles(user_id)
+        self._audit_service.log_deletion(user_id)
+```
+
+#### Data Classification
+- **Public**: VIN decode specifications (NHTSA data)
+- **Internal**: System logs, performance metrics
+- **Confidential**: User preferences, API keys
+- **Restricted**: Personal identifiers, usage analytics
+
+### Security Controls
+
+#### Input Validation and Sanitization
+- **VIN Validation**: Strict 17-character format validation
+- **SQL Injection Prevention**: Parameterized queries only
+- **XSS Protection**: Input sanitization and CSP headers
+- **Command Injection**: Input validation for system interactions
+
+#### Encryption and Transport Security
+- **TLS 1.3**: All external communications
+- **Certificate Pinning**: Mobile and web client security
+- **API Key Encryption**: Secure storage of sensitive credentials
+- **Database Encryption**: At-rest encryption for sensitive data
+
+#### Secret Management
+```yaml
+# Production secret management
+secrets:
+  telegram_bot_token:
+    source: environment_variable
+    rotation: 90_days
+  
+  database_credentials:
+    source: vault_service
+    rotation: 30_days
+  
+  external_api_keys:
+    source: encrypted_config
+    rotation: 180_days
+```
+
+### Audit Trails and Monitoring
+
+#### Comprehensive Logging
+- **Authentication Events**: Login attempts, token usage
+- **Authorization Decisions**: Access grants and denials
+- **Data Access**: Vehicle lookups, package analysis
+- **System Events**: Errors, performance anomalies
+
+#### Audit Log Schema
+```typescript
+interface AuditLogEntry {
+  timestamp: DateTime;
+  eventType: 'auth' | 'access' | 'modification' | 'error';
+  userId?: string;
+  apiKey?: string;
+  resource: string;
+  action: string;
+  result: 'success' | 'failure';
+  metadata: {
+    ipAddress: string;
+    userAgent?: string;
+    requestId: string;
+  };
+}
+```
+
+#### Security Monitoring
+- **Real-time Alerting**: Suspicious activity detection
+- **Anomaly Detection**: Unusual usage patterns
+- **Compliance Reporting**: Automated regulatory reports
+- **Incident Response**: Automated security incident handling
+
+### Compliance Framework
+
+#### GDPR Compliance (European Union)
+- **Article 6**: Lawful basis for processing (legitimate interest)
+- **Article 13**: Information to be provided (privacy notices)
+- **Article 17**: Right to erasure ("right to be forgotten")
+- **Article 20**: Right to data portability
+- **Article 25**: Data protection by design and by default
+- **Article 32**: Security of processing
+
+#### CCPA Compliance (California)
+- **Right to Know**: Data collection and usage transparency
+- **Right to Delete**: User data deletion upon request
+- **Right to Opt-Out**: Third-party data sharing controls
+- **Non-Discrimination**: Equal service regardless of privacy choices
+
+#### Automotive Industry Standards
+- **ISO/SAE 21434**: Cybersecurity engineering for road vehicles
+- **UNECE WP.29**: Vehicle cybersecurity and software update regulations
+- **NHTSA Guidelines**: Federal motor vehicle safety standards
+- **Privacy4Cars Standards**: Automotive data privacy best practices
+
+### Implementation Roadmap
+
+#### Phase 1: Foundation Security (Q1 2025)
+- [ ] Basic authentication and authorization
+- [ ] Rate limiting implementation
+- [ ] Input validation framework
+- [ ] Audit logging system
+
+#### Phase 2: Advanced Security (Q2 2025)
+- [ ] Multi-factor authentication
+- [ ] Advanced anomaly detection
+- [ ] Compliance automation
+- [ ] Security incident response
+
+#### Phase 3: Enterprise Security (Q3 2025)
+- [ ] Single sign-on (SSO) integration
+- [ ] Advanced threat protection
+- [ ] Security assessment automation
+- [ ] Third-party security certifications
+
+### Security Testing and Validation
+
+#### Continuous Security Assessment
+- **Automated Security Scanning**: SAST/DAST integration in CI/CD
+- **Penetration Testing**: Quarterly external security assessments
+- **Dependency Scanning**: Automated vulnerability detection
+- **Compliance Audits**: Annual third-party compliance verification
+
+#### Security Metrics
+- **Mean Time to Detection (MTTD)**: < 5 minutes for critical events
+- **Mean Time to Response (MTTR)**: < 30 minutes for security incidents
+- **Authentication Success Rate**: > 99.9% for legitimate users
+- **False Positive Rate**: < 1% for security alerts
 
 ## Architecture Decision Records
 
